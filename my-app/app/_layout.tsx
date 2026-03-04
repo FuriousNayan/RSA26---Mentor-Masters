@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import { ScanHistoryProvider } from '@/contexts/scan-history-context';
@@ -14,6 +15,7 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
+    <SafeAreaProvider>
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <ScanHistoryProvider>
       <Stack>
@@ -23,5 +25,6 @@ export default function RootLayout() {
       <StatusBar style="auto" />
       </ScanHistoryProvider>
     </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

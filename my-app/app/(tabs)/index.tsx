@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { StyleSheet, TouchableOpacity, View, Button, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,7 @@ export default function HomeScreen() {
   const [scanned, setScanned] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [foodData, setFoodData] = useState<any>(null);
+  const isProcessingRef = useRef(false);
 
   const [fontsLoaded] = useFonts({
     'OpenDyslexic': require('@/assets/images/fonts/OpenDyslexic-Regular.otf'),
@@ -25,7 +26,10 @@ export default function HomeScreen() {
   });
 
   const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
-    setScanned(true); 
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
+    setScanned(true);
     setIsLoading(true);
     setIsCameraOpen(false);
 
@@ -52,12 +56,14 @@ export default function HomeScreen() {
       alert('Network error. Could not fetch food data.');
     } finally {
       setIsLoading(false);
+      isProcessingRef.current = false;
     }
   };
 
   const resetScanner = () => {
     setScanned(false);
     setFoodData(null);
+    isProcessingRef.current = false;
   };
 
   const getAllergens = (product: any) => {
@@ -224,6 +230,7 @@ export default function HomeScreen() {
           activeOpacity={0.8}
           onPress={() => {
             setScanned(false);
+            isProcessingRef.current = false;
             setIsCameraOpen(true);
           }}
         >

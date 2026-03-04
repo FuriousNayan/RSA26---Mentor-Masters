@@ -2,9 +2,13 @@ import { Image } from 'expo-image';
 import { StyleSheet, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { useScanHistory, type ScannedItem } from '@/contexts/scan-history-context';
 
 function formatScannedAt(date: Date): string {
@@ -24,17 +28,19 @@ function formatScannedAt(date: Date): string {
 function SensitivityAllergyPlaceholder({ item }: { item: ScannedItem }) {
   const hasSensitivityFeature = item.sensitivityStatus !== null;
   const hasAllergyFeature = item.allergyStatus !== null;
+  const iconColor = useThemeColor({}, 'icon');
+  const statusBg = useThemeColor({ light: '#E8EAED', dark: '#2A2D31' }, 'background');
 
   return (
     <View style={styles.statusRow}>
-      <View style={[styles.statusBadge, styles.statusPlaceholder]}>
-        <Ionicons name="alert-circle-outline" size={14} color="#888" />
+      <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+        <Ionicons name="alert-circle-outline" size={14} color={iconColor} />
         <ThemedText style={styles.statusPlaceholderText}>
           Sensitivity: {hasSensitivityFeature ? 'Check' : 'Not configured'}
         </ThemedText>
       </View>
-      <View style={[styles.statusBadge, styles.statusPlaceholder]}>
-        <Ionicons name="medical-outline" size={14} color="#888" />
+      <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+        <Ionicons name="medical-outline" size={14} color={iconColor} />
         <ThemedText style={styles.statusPlaceholderText}>
           Allergy: {hasAllergyFeature ? 'Check' : 'Not configured'}
         </ThemedText>
@@ -50,15 +56,18 @@ function HistoryItemCard({
   item: ScannedItem;
   onRemove: () => void;
 }) {
+  const colorScheme = useColorScheme();
+  const iconColor = Colors[colorScheme ?? 'light'].icon;
+
   return (
-    <View style={styles.card}>
+    <ThemedView lightColor="#F0F2F5" darkColor="#1E2124" style={styles.card}>
       <View style={styles.cardHeader}>
         {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={styles.thumbnail} contentFit="cover" />
+          <Image source={{ uri: item.imageUrl }} style={styles.thumbnail} contentFit="contain" />
         ) : (
-          <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-            <Ionicons name="nutrition-outline" size={32} color="#999" />
-          </View>
+          <ThemedView lightColor="#E8EAED" darkColor="#2A2D31" style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+            <Ionicons name="nutrition-outline" size={32} color={iconColor} />
+          </ThemedView>
         )}
         <View style={styles.cardContent}>
           <ThemedText type="defaultSemiBold" style={styles.productName} numberOfLines={2}>
@@ -71,7 +80,7 @@ function HistoryItemCard({
           <SensitivityAllergyPlaceholder item={item} />
         </View>
         <TouchableOpacity onPress={onRemove} style={styles.removeButton} hitSlop={12}>
-          <Ionicons name="close-circle-outline" size={24} color="#999" />
+          <Ionicons name="close-circle-outline" size={24} color={iconColor} />
         </TouchableOpacity>
       </View>
       <View style={styles.allergensSection}>
@@ -80,12 +89,13 @@ function HistoryItemCard({
           {item.allergens}
         </ThemedText>
       </View>
-    </View>
+    </ThemedView>
   );
 }
 
 export default function HistoryScreen() {
   const { items, clearHistory, removeItem } = useScanHistory();
+  const colorScheme = useColorScheme();
 
   const [fontsLoaded] = useFonts({
     OpenDyslexic: require('@/assets/images/fonts/OpenDyslexic-Regular.otf'),
@@ -107,8 +117,11 @@ export default function HistoryScreen() {
     return null;
   }
 
+  const backgroundColor = useThemeColor({}, 'background');
+
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+      <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText type="title" style={styles.title}>
           Scan History
@@ -126,7 +139,7 @@ export default function HistoryScreen() {
 
       {items.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="barcode-outline" size={64} color="#CCC" />
+          <Ionicons name="barcode-outline" size={64} color={Colors[colorScheme ?? 'light'].icon} />
           <ThemedText style={styles.emptyTitle}>No scans yet</ThemedText>
           <ThemedText style={styles.emptySubtitle}>
             Scan items on the Home tab to see them here. Each item will show sensitivity and allergy
@@ -144,13 +157,14 @@ export default function HistoryScreen() {
           ))}
         </ScrollView>
       )}
-    </ThemedView>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 },
   title: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 28,
@@ -196,7 +210,6 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 40 },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -211,7 +224,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 10,
-    backgroundColor: '#F0F0F0',
+    overflow: 'hidden',
   },
   thumbnailPlaceholder: {
     justifyContent: 'center',
@@ -243,19 +256,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 8,
   },
-  statusPlaceholder: {
-    backgroundColor: '#F5F5F5',
-  },
   statusPlaceholderText: {
     fontFamily: 'OpenDyslexic',
     fontSize: 11,
-    color: '#888',
+    opacity: 0.8,
     marginLeft: 4,
   },
   removeButton: { padding: 4 },
   allergensSection: {
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: 'rgba(128,128,128,0.25)',
     paddingTop: 12,
   },
   allergensLabel: {
