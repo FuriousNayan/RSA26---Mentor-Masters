@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Image } from 'expo-image';
 import { StyleSheet, TouchableOpacity, View, Button, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useFonts } from 'expo-font'; 
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
@@ -15,16 +16,13 @@ export default function HomeScreen() {
   const [scanned, setScanned] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [foodData, setFoodData] = useState<any>(null);
-  const isProcessingRef = useRef(false);
-  
+
+  const [fontsLoaded] = useFonts({
+    'OpenDyslexic': require('@/assets/images/fonts/OpenDyslexic-Regular.otf'),
+    'OpenDyslexic-Bold': require('@/assets/images/fonts/OpenDyslexic-Bold.otf'),
+  });
 
   const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
-    // 1. Check the lock. If it's already locked, ignore this scan completely!
-    if (isProcessingRef.current) return; 
-    
-    // 2. Instantly lock the scanner
-    isProcessingRef.current = true; 
-
     setScanned(true); 
     setIsLoading(true);
     setIsCameraOpen(false);
@@ -38,13 +36,10 @@ export default function HomeScreen() {
       } else {
         alert('Product not found in the database. Try another item!');
         setFoodData(null);
-        // If it failed, we unlock it so they can try again without restarting the app
-        isProcessingRef.current = false; 
       }
     } catch (error) {
       console.error(error);
       alert('Network error. Could not fetch food data.');
-      isProcessingRef.current = false; // Unlock on error
     } finally {
       setIsLoading(false);
     }
@@ -53,26 +48,50 @@ export default function HomeScreen() {
   const resetScanner = () => {
     setScanned(false);
     setFoodData(null);
-    // 3. Unlock the scanner when the user clicks "Scan Another Item"
-    isProcessingRef.current = false; 
   };
 
-  // NEW: Helper function to clean up the allergens array
-  const formatAllergens = (tags: string[]) => {
-    if (!tags || tags.length === 0) return 'None detected by database. (Always double check packaging!)';
-    
-    return tags
-      .map(tag => tag.replace(/^[a-z]+:/, '')) // Removes the "en:" or "fr:" language prefix
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalizes the first letter
-      .join(', '); // Joins them into a nice comma-separated list
+  const getAllergens = (product: any) => {
+    if (product.allergens_tags && product.allergens_tags.length > 0) {
+      return product.allergens_tags
+        .map((tag: string) => tag.replace(/^[a-z]+:/, ''))
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(', ');
+    }
+
+    if (product.allergens && product.allergens.trim().length > 0) {
+      return product.allergens
+        .split(',')
+        .map((a: string) => a.replace(/^[a-z]+:/, '').trim())
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(', ');
+    }
+
+    let rawText = product.ingredients_text_en || product.ingredients_text || '';
+    if (rawText) {
+      const containsMatch = rawText.match(/contains\s*:?\s*([^.]*)/i);
+      if (containsMatch && containsMatch[1]) {
+        let foundAllergens = containsMatch[1].trim().replace(/_/g, '').replace(/\s+/g, ' ');
+        if (foundAllergens.length > 2) return foundAllergens;
+      }
+    }
+
+    return 'None detected by database. (Always double check packaging!)';
   };
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#FF6B6B" />
+      </View>
+    );
+  }
 
   if (!permission) return <View />;
   if (!permission.granted) {
     return (
       <View style={styles.centerContainer}>
-        <ThemedText style={{ textAlign: 'center', marginBottom: 20 }}>
-          FoodBuddy needs your permission to show the camera
+        <ThemedText style={{ textAlign: 'center', marginBottom: 20, fontFamily: 'OpenDyslexic' }}>
+          NutriNav needs your permission to show the camera
         </ThemedText>
         <Button onPress={requestPermission} title="Grant Permission" />
       </View>
@@ -83,12 +102,11 @@ export default function HomeScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#FF6B6B" />
-        <ThemedText style={{ marginTop: 20 }}>Looking up food data...</ThemedText>
+        <ThemedText style={{ marginTop: 20, fontFamily: 'OpenDyslexic' }}>Looking up food data...</ThemedText>
       </View>
     );
   }
 
-  // --- UI: The Results Screen ---
   if (foodData) {
     const nutriments = foodData.nutriments || {};
     const calories = nutriments['energy-kcal_serving'] || nutriments['energy-kcal_100g'] || '--';
@@ -107,7 +125,8 @@ export default function HomeScreen() {
           <Image source={{ uri: foodData.image_url }} style={styles.productImage} contentFit="contain" />
         )}
 
-        <ThemedText type="title" style={styles.productTitle}>
+        {/* Added flexShrink to prevent text from pushing layout bounds */}
+        <ThemedText type="title" style={[styles.productTitle, { flexShrink: 1 }]}>
           {foodData.product_name || 'Unknown Product'}
         </ThemedText>
         
@@ -115,7 +134,6 @@ export default function HomeScreen() {
           {foodData.brands || 'Unknown Brand'}
         </ThemedText>
 
-        {/* NUTRITION FACTS */}
         <View style={styles.nutritionRow}>
           <View style={styles.macroBox}>
             <ThemedText style={styles.macroLabel}>Calories</ThemedText>
@@ -135,13 +153,12 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* CLEAN ALLERGENS ONLY - Ingredients block is completely gone! */}
         <View style={[styles.dataCard, { borderColor: '#FF6B6B', borderWidth: 2 }]}>
           <ThemedText type="subtitle" style={[styles.sectionTitle, { color: '#FF6B6B' }]}>
             Contains Allergens:
           </ThemedText>
-          <ThemedText style={[styles.bodyText, { fontWeight: 'bold', fontSize: 18 }]}>
-            {formatAllergens(foodData.allergens_tags)}
+          <ThemedText style={styles.bodyText}>
+            {getAllergens(foodData)}
           </ThemedText>
         </View>
 
@@ -149,7 +166,6 @@ export default function HomeScreen() {
     );
   }
 
-  // --- UI: The Camera Screen ---
   if (isCameraOpen) {
     return (
       <View style={styles.cameraContainer}>
@@ -175,7 +191,6 @@ export default function HomeScreen() {
     );
   }
 
-  // --- UI: The Home Screen ---
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#FFE4E1', dark: '#4A148C' }}
@@ -188,7 +203,7 @@ export default function HomeScreen() {
       }>
       <ThemedView style={styles.mainContainer}>
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title" style={styles.titleText}>FoodBuddy</ThemedText>
+          <ThemedText type="title" style={styles.titleText}>NutriNav</ThemedText>
           <HelloWave />
         </ThemedView>
         <ThemedText style={styles.subtitleText}>
@@ -211,42 +226,103 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Home Screen Styles
   mainContainer: { flex: 1, alignItems: 'center', paddingTop: 30, paddingHorizontal: 20 },
   titleContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  titleText: { fontSize: 40, fontWeight: '900', letterSpacing: 0, lineHeight: 48, paddingHorizontal: 4 },
-  subtitleText: { fontSize: 16, textAlign: 'center', opacity: 0.6, marginBottom: 50, lineHeight: 24, paddingHorizontal: 15 },
+  
+  // Removed custom letter spacing to allow natural wrapping
+  titleText: { 
+    fontFamily: 'OpenDyslexic-Bold', 
+    fontSize: 40, 
+    lineHeight: 48, 
+    paddingHorizontal: 4 
+  },
+  subtitleText: { 
+    fontFamily: 'OpenDyslexic',
+    fontSize: 16, 
+    textAlign: 'center', 
+    opacity: 0.8, 
+    marginBottom: 50, 
+    lineHeight: 28, 
+    paddingHorizontal: 15 
+  },
   scanButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF6B6B', paddingVertical: 18, paddingHorizontal: 32, borderRadius: 999, width: '100%', shadowColor: '#FF6B6B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
   buttonIcon: { marginRight: 10 },
-  scanButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', letterSpacing: 0.5 },
+  scanButtonText: { 
+    fontFamily: 'OpenDyslexic-Bold',
+    color: '#FFFFFF', 
+    fontSize: 18, 
+  },
   headerImage: { height: '100%', width: '100%', bottom: -20, opacity: 0.5, position: 'absolute' },
   
-  // Utility
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   
-  // Camera Styles
   cameraContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'black' },
   camera: { flex: 1 },
   cameraTopBar: { paddingTop: 60, paddingHorizontal: 20, alignItems: 'flex-start', zIndex: 10 },
   scannerOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   scannerTarget: { width: 250, height: 250, borderWidth: 2, borderColor: '#00FF00', backgroundColor: 'transparent', borderRadius: 20, marginBottom: 20 },
-  scannerText: { color: 'white', fontSize: 18, fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 10 },
+  scannerText: { 
+    fontFamily: 'OpenDyslexic-Bold',
+    color: 'white', 
+    fontSize: 18, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    padding: 10, 
+    borderRadius: 10,
+  },
 
-  // Results Styles
   resultsContainer: { flex: 1, backgroundColor: '#F8F9FA' },
   backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  backButtonText: { fontSize: 16, marginLeft: 8, color: '#333', fontWeight: '600' },
+  backButtonText: { 
+    fontFamily: 'OpenDyslexic',
+    fontSize: 16, 
+    marginLeft: 8, 
+    color: '#333',
+  },
   productImage: { width: '100%', height: 200, marginBottom: 20, borderRadius: 10 },
-  productTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 4, color: '#1A1A1A' },
-  brandText: { fontSize: 16, color: '#666', marginBottom: 20 },
   
-  // Nutrition Facts Styles
+  // Adjusted line height for better multi-line title wrapping
+  productTitle: { 
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 28, 
+    marginBottom: 4, 
+    color: '#1A1A1A',
+    lineHeight: 36, 
+  },
+  brandText: { 
+    fontFamily: 'OpenDyslexic',
+    fontSize: 16, 
+    color: '#666', 
+    marginBottom: 20,
+  },
+  
   nutritionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, gap: 10 },
   macroBox: { flex: 1, backgroundColor: 'white', paddingVertical: 15, borderRadius: 12, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
-  macroLabel: { fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 },
-  macroValue: { fontSize: 18, fontWeight: '900', color: '#333' },
+  macroLabel: { 
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 11, // Slightly smaller to prevent squishing on narrow screens
+    color: '#888', 
+    textTransform: 'uppercase', 
+    marginBottom: 4,
+  },
+  macroValue: { 
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 18, 
+    color: '#333' 
+  },
 
   dataCard: { backgroundColor: 'white', padding: 15, borderRadius: 15, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
-  bodyText: { fontSize: 15, lineHeight: 22, color: '#444' },
+  sectionTitle: { 
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 18, 
+    marginBottom: 8,
+  },
+  // Increased line height and explicit flex mapping for smooth wrapping
+  bodyText: { 
+    fontFamily: 'OpenDyslexic-Bold', 
+    fontSize: 16, // Reduced slightly to balance with the bold weight
+    lineHeight: 26, 
+    color: '#444',
+    flexWrap: 'wrap', // Forces wrapping behavior
+    flexShrink: 1 
+  },
 });
