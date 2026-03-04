@@ -9,8 +9,10 @@ import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useScanHistory } from '@/contexts/scan-history-context';
 
 export default function HomeScreen() {
+  const { addItem } = useScanHistory();
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [scanned, setScanned] = useState(false);
@@ -32,7 +34,15 @@ export default function HomeScreen() {
       const json = await response.json();
 
       if (json.status === 1) {
-        setFoodData(json.product);
+        const product = json.product;
+        setFoodData(product);
+        addItem({
+          barcode: data,
+          productName: product.product_name || 'Unknown Product',
+          brand: product.brands || 'Unknown Brand',
+          imageUrl: product.image_url || null,
+          allergens: getAllergens(product),
+        });
       } else {
         alert('Product not found in the database. Try another item!');
         setFoodData(null);
