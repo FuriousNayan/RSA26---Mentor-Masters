@@ -168,11 +168,13 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 28,
+    lineHeight: 38, // <--- ADDED: Gives the tall letters room so they don't clip!
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: 'OpenDyslexic',
     fontSize: 14,
+    lineHeight: 22, // <--- ADDED: Better readability
     opacity: 0.8,
     marginBottom: 12,
   },
@@ -198,12 +200,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 20,
+    lineHeight: 28, // <--- ADDED: Prevents clipping here too
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontFamily: 'OpenDyslexic',
     fontSize: 16,
+    lineHeight: 24, // <--- ADDED: Better readability
     textAlign: 'center',
     opacity: 0.7,
   },
@@ -234,6 +238,7 @@ const styles = StyleSheet.create({
   productName: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 16,
+    lineHeight: 22, // <--- ADDED
     marginBottom: 2,
   },
   brand: {
@@ -271,12 +276,14 @@ const styles = StyleSheet.create({
   allergensLabel: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 12,
+    lineHeight: 18, // <--- ADDED
     opacity: 0.8,
     marginBottom: 4,
   },
-  allergensText: {
+  allergensText: { 
     fontFamily: 'OpenDyslexic',
     fontSize: 14,
+    lineHeight: 22, // <--- ADDED
     opacity: 0.9,
   },
 });
