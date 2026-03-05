@@ -257,7 +257,7 @@ export default function DiscoverScreen() {
           </ThemedText>
           <TouchableOpacity
             style={styles.preferencesButton}
-            onPress={() => router.push('/preferences')}
+            onPress={() => router.push('/preferences' as any)}
           >
             <Ionicons name="settings-outline" size={20} color="#0a7ea4" />
             <ThemedText style={styles.preferencesButtonText}>
