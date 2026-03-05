@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import { ScanHistoryProvider } from '@/contexts/scan-history-context';
+import { UserPreferencesProvider } from '@/contexts/user-preferences-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export const unstable_settings = {
@@ -18,11 +19,14 @@ export default function RootLayout() {
     <SafeAreaProvider>
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <ScanHistoryProvider>
+      <UserPreferencesProvider>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="preferences" options={{ title: 'Preferences' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
+      </UserPreferencesProvider>
       </ScanHistoryProvider>
     </ThemeProvider>
     </SafeAreaProvider>

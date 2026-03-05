@@ -1,0 +1,299 @@
+import { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, Stack } from 'expo-router';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { useUserPreferences } from '@/contexts/user-preferences-context';
+
+const COMMON_ALLERGENS = [
+  'Gluten',
+  'Milk',
+  'Eggs',
+  'Fish',
+  'Shellfish',
+  'Tree nuts',
+  'Peanuts',
+  'Soy',
+  'Sesame',
+  'Mustard',
+  'Celery',
+  'Lupin',
+  'Sulfites',
+];
+
+const COMMON_SENSITIVITIES = [
+  'Lactose',
+  'Gluten',
+  'Fructose',
+  'Histamine',
+  'Artificial sweeteners',
+  'MSG',
+  'Sulfites',
+  'Food dyes',
+];
+
+function Tag({
+  label,
+  onRemove,
+  variant,
+}: {
+  label: string;
+  onRemove: () => void;
+  variant: 'allergy' | 'sensitivity';
+}) {
+  const bg = variant === 'allergy' ? 'rgba(211, 47, 47, 0.15)' : 'rgba(245, 124, 0, 0.15)';
+  const color = variant === 'allergy' ? '#C62828' : '#E65100';
+
+  return (
+    <View style={[styles.tag, { backgroundColor: bg }]}>
+      <ThemedText style={[styles.tagText, { color }]}>{label}</ThemedText>
+      <TouchableOpacity onPress={onRemove} hitSlop={8} style={styles.tagRemove}>
+        <Ionicons name="close-circle" size={18} color={color} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+export default function PreferencesScreen() {
+  const {
+    allergies,
+    sensitivities,
+    addAllergy,
+    removeAllergy,
+    addSensitivity,
+    removeSensitivity,
+  } = useUserPreferences();
+  const [newAllergy, setNewAllergy] = useState('');
+  const [newSensitivity, setNewSensitivity] = useState('');
+
+  const [fontsLoaded] = useFonts({
+    OpenDyslexic: require('@/assets/images/fonts/OpenDyslexic-Regular.otf'),
+    'OpenDyslexic-Bold': require('@/assets/images/fonts/OpenDyslexic-Bold.otf'),
+  });
+
+  const backgroundColor = useThemeColor({}, 'background');
+
+  if (!fontsLoaded) return null;
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Allergies & Sensitivities',
+          headerBackTitle: 'Back',
+          headerShadowVisible: false,
+        }}
+      />
+      <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['bottom']}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboard}
+        >
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.section}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Allergies
+              </ThemedText>
+              <ThemedText style={styles.sectionHint}>
+                Products containing these will be flagged and alternatives suggested.
+              </ThemedText>
+              <View style={styles.tagRow}>
+                {allergies.map((a) => (
+                  <Tag key={a} label={a} variant="allergy" onRemove={() => removeAllergy(a)} />
+                ))}
+              </View>
+              <View style={styles.quickAddRow}>
+                {COMMON_ALLERGENS.filter((c) => !allergies.some((a) => a.toLowerCase() === c.toLowerCase())).map(
+                  (c) => (
+                    <TouchableOpacity
+                      key={c}
+                      style={styles.quickAddChip}
+                      onPress={() => addAllergy(c)}
+                    >
+                      <ThemedText style={styles.quickAddText}>+ {c}</ThemedText>
+                    </TouchableOpacity>
+                  )
+                )}
+              </View>
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Add custom allergy..."
+                  placeholderTextColor="#999"
+                  value={newAllergy}
+                  onChangeText={setNewAllergy}
+                  onSubmitEditing={() => {
+                    if (newAllergy.trim()) {
+                      addAllergy(newAllergy.trim());
+                      setNewAllergy('');
+                    }
+                  }}
+                  returnKeyType="done"
+                />
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={() => {
+                    if (newAllergy.trim()) {
+                      addAllergy(newAllergy.trim());
+                      setNewAllergy('');
+                    }
+                  }}
+                >
+                  <Ionicons name="add-circle" size={28} color="#0a7ea4" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Food sensitivities
+              </ThemedText>
+              <ThemedText style={styles.sectionHint}>
+                Items you prefer to avoid or that cause discomfort.
+              </ThemedText>
+              <View style={styles.tagRow}>
+                {sensitivities.map((s) => (
+                  <Tag
+                    key={s}
+                    label={s}
+                    variant="sensitivity"
+                    onRemove={() => removeSensitivity(s)}
+                  />
+                ))}
+              </View>
+              <View style={styles.quickAddRow}>
+                {COMMON_SENSITIVITIES.filter(
+                  (c) => !sensitivities.some((s) => s.toLowerCase() === c.toLowerCase())
+                ).map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={styles.quickAddChip}
+                    onPress={() => addSensitivity(c)}
+                  >
+                    <ThemedText style={styles.quickAddText}>+ {c}</ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Add custom sensitivity..."
+                  placeholderTextColor="#999"
+                  value={newSensitivity}
+                  onChangeText={setNewSensitivity}
+                  onSubmitEditing={() => {
+                    if (newSensitivity.trim()) {
+                      addSensitivity(newSensitivity.trim());
+                      setNewSensitivity('');
+                    }
+                  }}
+                  returnKeyType="done"
+                />
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={() => {
+                    if (newSensitivity.trim()) {
+                      addSensitivity(newSensitivity.trim());
+                      setNewSensitivity('');
+                    }
+                  }}
+                >
+                  <Ionicons name="add-circle" size={28} color="#0a7ea4" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  keyboard: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  section: { marginBottom: 28 },
+  sectionTitle: {
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 18,
+    marginBottom: 6,
+  },
+  sectionHint: {
+    fontFamily: 'OpenDyslexic',
+    fontSize: 14,
+    opacity: 0.7,
+    marginBottom: 12,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 4,
+    borderRadius: 20,
+  },
+  tagText: {
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 14,
+    marginRight: 4,
+  },
+  tagRemove: { padding: 2 },
+  quickAddRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  quickAddChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(10, 126, 164, 0.12)',
+  },
+  quickAddText: {
+    fontFamily: 'OpenDyslexic',
+    fontSize: 13,
+    color: '#0a7ea4',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  input: {
+    flex: 1,
+    fontFamily: 'OpenDyslexic',
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(128,128,128,0.1)',
+    color: '#333',
+  },
+  addButton: { padding: 4 },
+});
