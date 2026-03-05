@@ -37,6 +37,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="sparkles" color={color} />,
         }}
       />
+      {/* --- NEW: ADDING THE BUDDY TAB --- */}
+      <Tabs.Screen
+        name="buddy"
+        options={{
+          title: 'NutriBuddy',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bubble.left.and.bubble.right.fill" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
