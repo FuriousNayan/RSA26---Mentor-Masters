@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -190,13 +190,14 @@ export default function DiscoverScreen() {
   });
 
   const fetchAlternatives = useCallback(async (item: ScannedItem) => {
-    const key = item.id;
+    const prefKey = [...preferences.allergies, ...preferences.sensitivities].sort().join('|');
+    const key = `${item.id}:${prefKey}`;
     const cached = alternativesCacheRef.current[key];
     if (cached) return cached;
-    setLoadingAlternativesFor(key);
+    setLoadingAlternativesFor(item.id);
     try {
       const searchTerm = item.productName || item.brand || 'food';
-      const results = await searchSimilarProducts(searchTerm, 8);
+      const results = await searchSimilarProducts(searchTerm, 12);
       const filtered = results.filter(
         (p) =>
           p.code !== item.barcode &&
@@ -210,9 +211,12 @@ export default function DiscoverScreen() {
         );
         return !ac && !sc;
       });
-      const toShow = safeAlternatives.length > 0 ? safeAlternatives : filtered.slice(0, 5);
+      const toShow = (safeAlternatives.length > 0 ? safeAlternatives : filtered.slice(0, 6)).slice(0, 3);
       alternativesCacheRef.current[key] = toShow;
       return toShow;
+    } catch (err) {
+      console.warn('Find alternatives failed:', err);
+      return [];
     } finally {
       setLoadingAlternativesFor(null);
     }
@@ -220,6 +224,10 @@ export default function DiscoverScreen() {
 
   const [expandedAlternatives, setExpandedAlternatives] = useState<string | null>(null);
   const [alternativesData, setAlternativesData] = useState<Record<string, DiscoverProduct[]>>({});
+
+  useEffect(() => {
+    alternativesCacheRef.current = {};
+  }, [preferences.allergies, preferences.sensitivities]);
 
   const handleFindAlternatives = useCallback(
     async (item: ScannedItem) => {
@@ -337,7 +345,9 @@ export default function DiscoverScreen() {
                               ))}
                               {(alternativesData[item.id] ?? []).length === 0 && (
                                 <ThemedText style={styles.noAlternatives}>
-                                  No alternatives found. Try a different search.
+                                  No alternatives without your allergens found. Try searching for a
+                                  similar product by category (e.g. "dark chocolate" instead of the
+                                  full name).
                                 </ThemedText>
                               )}
                             </>
@@ -365,11 +375,11 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+  header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16 },
   title: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 28,
-    lineHeight: 38,
+    lineHeight: 36,
     marginBottom: 8,
   },
   subtitle: {
@@ -377,14 +387,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     opacity: 0.8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   preferencesButton: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
   preferencesButtonText: {
     fontFamily: 'OpenDyslexic',
@@ -395,126 +405,127 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 16,
-    gap: 12,
+    padding: 18,
+    borderRadius: 18,
+    marginHorizontal: 24,
+    marginBottom: 20,
+    gap: 14,
   },
   bannerText: {
     fontFamily: 'OpenDyslexic',
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
     flex: 1,
   },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  section: { marginBottom: 24 },
+  scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
+  section: { marginBottom: 28 },
   sectionTitle: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 18,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   warningTitle: { color: '#D32F2F' },
   sectionSubtitle: {
     fontFamily: 'OpenDyslexic',
     fontSize: 13,
-    opacity: 0.7,
-    marginBottom: 12,
+    opacity: 0.75,
+    marginBottom: 14,
   },
   card: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   altCard: {
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 0.3)',
+    borderColor: 'rgba(76, 175, 80, 0.35)',
   },
   cardRow: { flexDirection: 'row' },
   thumbnail: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
+    width: 60,
+    height: 60,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   altThumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    width: 50,
+    height: 50,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   thumbnailPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardContent: { flex: 1, marginLeft: 12, justifyContent: 'center', minWidth: 0 },
+  cardContent: { flex: 1, marginLeft: 14, justifyContent: 'center', minWidth: 0 },
   productName: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 15,
-    lineHeight: 20,
-    marginBottom: 2,
+    lineHeight: 21,
+    marginBottom: 4,
   },
   altProductName: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 14,
-    lineHeight: 18,
-    marginBottom: 2,
+    lineHeight: 20,
+    marginBottom: 4,
   },
   brand: {
     fontFamily: 'OpenDyslexic',
     fontSize: 12,
-    opacity: 0.7,
-    marginBottom: 4,
+    opacity: 0.75,
+    marginBottom: 6,
   },
   allergensHint: {
     fontFamily: 'OpenDyslexic',
     fontSize: 11,
     opacity: 0.8,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   tapHint: {
     fontFamily: 'OpenDyslexic',
     fontSize: 10,
-    opacity: 0.6,
+    opacity: 0.65,
   },
   alternativeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
   alternativeButtonText: {
     fontFamily: 'OpenDyslexic',
     fontSize: 13,
     color: '#0a7ea4',
-    marginLeft: 6,
+    marginLeft: 8,
   },
   alternativesContainer: {
-    marginLeft: 16,
-    marginBottom: 16,
-    paddingLeft: 12,
-    borderLeftWidth: 3,
+    marginLeft: 20,
+    marginBottom: 18,
+    paddingLeft: 16,
+    borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
+    borderRadius: 2,
   },
   alternativesLabel: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 13,
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  loader: { marginVertical: 16 },
+  loader: { marginVertical: 20 },
   noAlternatives: {
     fontFamily: 'OpenDyslexic',
     fontSize: 13,
-    opacity: 0.7,
-    marginBottom: 8,
+    opacity: 0.75,
+    marginBottom: 10,
   },
   emptyState: {
     flex: 1,
@@ -527,14 +538,14 @@ const styles = StyleSheet.create({
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 20,
     lineHeight: 28,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 20,
+    marginBottom: 10,
   },
   emptySubtitle: {
     fontFamily: 'OpenDyslexic',
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
-    opacity: 0.7,
+    opacity: 0.75,
   },
 });

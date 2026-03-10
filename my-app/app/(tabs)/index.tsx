@@ -1,14 +1,22 @@
 import { useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { StyleSheet, TouchableOpacity, View, Button, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useFonts } from 'expo-font'; 
+import { useFonts } from 'expo-font';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { useScanHistory } from '@/contexts/scan-history-context';
 
 export default function HomeScreen() {
@@ -24,6 +32,14 @@ export default function HomeScreen() {
     'OpenDyslexic': require('@/assets/images/fonts/OpenDyslexic-Regular.otf'),
     'OpenDyslexic-Bold': require('@/assets/images/fonts/OpenDyslexic-Bold.otf'),
   });
+
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardBg = useThemeColor(
+    { light: '#FEF7F6', dark: '#2A1F1E' },
+    'background'
+  );
+  const iconTint = useThemeColor({ light: '#FF6B6B', dark: '#FF8A7A' }, 'tint');
+  const featureColor = useThemeColor({ light: '#687076', dark: '#9BA1A6' }, 'icon');
 
   const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (isProcessingRef.current) return;
@@ -96,30 +112,36 @@ export default function HomeScreen() {
 
   if (!fontsLoaded) {
     return (
-      <View style={styles.centerContainer}>
+      <ThemedView style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#FF6B6B" />
-      </View>
+      </ThemedView>
     );
   }
 
   if (!permission) return <View />;
   if (!permission.granted) {
     return (
-      <View style={styles.centerContainer}>
-        <ThemedText style={{ textAlign: 'center', marginBottom: 20, fontFamily: 'OpenDyslexic' }}>
-          NutriNav needs your permission to show the camera
-        </ThemedText>
-        <Button onPress={requestPermission} title="Grant Permission" />
-      </View>
+      <ThemedView style={styles.centerContainer}>
+        <View style={styles.permissionCard}>
+          <Ionicons name="camera-outline" size={56} color="#FF6B6B" style={{ marginBottom: 16 }} />
+          <ThemedText style={styles.permissionTitle}>Camera access needed</ThemedText>
+          <ThemedText style={styles.permissionText}>
+            NutriNav needs your camera to scan barcodes and identify products.
+          </ThemedText>
+          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+            <ThemedText style={styles.permissionButtonText}>Grant Permission</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
     );
   }
 
   if (isLoading) {
     return (
-      <View style={styles.centerContainer}>
+      <ThemedView style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#FF6B6B" />
-        <ThemedText style={{ marginTop: 20, fontFamily: 'OpenDyslexic' }}>Looking up food data...</ThemedText>
-      </View>
+        <ThemedText style={styles.loadingText}>Looking up food data...</ThemedText>
+      </ThemedView>
     );
   }
 
@@ -131,54 +153,58 @@ export default function HomeScreen() {
     const protein = nutriments['proteins_serving'] || nutriments['proteins_100g'] || '--';
 
     return (
-      <ScrollView style={styles.resultsContainer} contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
-        <TouchableOpacity style={styles.backButton} onPress={resetScanner}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-          <ThemedText style={styles.backButtonText}>Scan Another Item</ThemedText>
-        </TouchableOpacity>
+      <ThemedView style={styles.resultsWrapper}>
+        <ScrollView
+          style={styles.resultsContainer}
+          contentContainerStyle={styles.resultsContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity style={styles.backButton} onPress={resetScanner} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={22} color="#333" />
+            <ThemedText style={styles.backButtonText}>Scan another</ThemedText>
+          </TouchableOpacity>
 
-        {foodData.image_url && (
-          <Image source={{ uri: foodData.image_url }} style={styles.productImage} contentFit="contain" />
-        )}
+          {foodData.image_url && (
+            <Image source={{ uri: foodData.image_url }} style={styles.productImage} contentFit="contain" />
+          )}
 
-        {/* Added flexShrink to prevent text from pushing layout bounds */}
-        <ThemedText type="title" style={[styles.productTitle, { flexShrink: 1 }]}>
-          {foodData.product_name || 'Unknown Product'}
-        </ThemedText>
-        
-        <ThemedText style={styles.brandText}>
-          {foodData.brands || 'Unknown Brand'}
-        </ThemedText>
-
-        <View style={styles.nutritionRow}>
-          <View style={styles.macroBox}>
-            <ThemedText style={styles.macroLabel}>Calories</ThemedText>
-            <ThemedText style={styles.macroValue}>{calories}</ThemedText>
-          </View>
-          <View style={styles.macroBox}>
-            <ThemedText style={styles.macroLabel}>Fat</ThemedText>
-            <ThemedText style={styles.macroValue}>{fat}g</ThemedText>
-          </View>
-          <View style={styles.macroBox}>
-            <ThemedText style={styles.macroLabel}>Carbs</ThemedText>
-            <ThemedText style={styles.macroValue}>{carbs}g</ThemedText>
-          </View>
-          <View style={styles.macroBox}>
-            <ThemedText style={styles.macroLabel}>Protein</ThemedText>
-            <ThemedText style={styles.macroValue}>{protein}g</ThemedText>
-          </View>
-        </View>
-
-        <View style={[styles.dataCard, { borderColor: '#FF6B6B', borderWidth: 2 }]}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: '#FF6B6B' }]}>
-            Contains Allergens:
+          <ThemedText type="title" style={[styles.productTitle, { flexShrink: 1 }]}>
+            {foodData.product_name || 'Unknown Product'}
           </ThemedText>
-          <ThemedText style={styles.bodyText}>
-            {getAllergens(foodData)}
-          </ThemedText>
-        </View>
 
-      </ScrollView>
+          <ThemedText style={styles.brandText}>
+            {foodData.brands || 'Unknown Brand'}
+          </ThemedText>
+
+          <View style={styles.nutritionRow}>
+            <View style={styles.macroBox}>
+              <ThemedText style={styles.macroLabel}>Calories</ThemedText>
+              <ThemedText style={styles.macroValue}>{calories}</ThemedText>
+            </View>
+            <View style={styles.macroBox}>
+              <ThemedText style={styles.macroLabel}>Fat</ThemedText>
+              <ThemedText style={styles.macroValue}>{fat}g</ThemedText>
+            </View>
+            <View style={styles.macroBox}>
+              <ThemedText style={styles.macroLabel}>Carbs</ThemedText>
+              <ThemedText style={styles.macroValue}>{carbs}g</ThemedText>
+            </View>
+            <View style={styles.macroBox}>
+              <ThemedText style={styles.macroLabel}>Protein</ThemedText>
+              <ThemedText style={styles.macroValue}>{protein}g</ThemedText>
+            </View>
+          </View>
+
+          <View style={[styles.dataCard, { borderColor: '#FF6B6B', borderWidth: 2 }]}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: '#FF6B6B' }]}>
+              Contains Allergens:
+            </ThemedText>
+            <ThemedText style={styles.bodyText}>
+              {getAllergens(foodData)}
+            </ThemedText>
+          </View>
+        </ScrollView>
+      </ThemedView>
     );
   }
 
@@ -208,138 +234,310 @@ export default function HomeScreen() {
   }
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#FFE4E1', dark: '#4A148C' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.headerImage}
-          contentFit="contain"
-        />
-      }>
-      <ThemedView style={styles.mainContainer}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title" style={styles.titleText}>NutriNav</ThemedText>
-          <HelloWave />
-        </ThemedView>
-        <ThemedText style={styles.subtitleText}>
-          Scan your food for an instant allergy report.
-        </ThemedText>
-        <TouchableOpacity 
-          style={styles.scanButton} 
-          activeOpacity={0.8}
+    <SafeAreaView style={[styles.mainWrapper, { backgroundColor }]} edges={['top']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.heroCard, { backgroundColor: cardBg }]}>
+          <View style={styles.titleRow}>
+            <ThemedText type="title" style={styles.titleText}>
+              NutriNav
+            </ThemedText>
+            <HelloWave />
+          </View>
+          <ThemedText style={styles.subtitleText}>
+            Scan your food for an instant allergy and nutrition report.
+          </ThemedText>
+          <View style={[styles.iconCircle, { backgroundColor: `${iconTint}18` }]}>
+            <Ionicons name="barcode-outline" size={48} color={iconTint} />
+          </View>
+        </View>
+
+        <View style={styles.featuresRow}>
+          <View style={styles.featureItem}>
+            <Ionicons name="shield-checkmark-outline" size={22} color={iconTint} />
+            <ThemedText style={[styles.featureText, { color: featureColor }]}>Allergy check</ThemedText>
+          </View>
+          <View style={styles.featureItem}>
+            <Ionicons name="nutrition-outline" size={22} color={iconTint} />
+            <ThemedText style={[styles.featureText, { color: featureColor }]}>Nutrition facts</ThemedText>
+          </View>
+          <View style={styles.featureItem}>
+            <Ionicons name="flash-outline" size={22} color={iconTint} />
+            <ThemedText style={[styles.featureText, { color: featureColor }]}>Instant scan</ThemedText>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.scanButton}
+          activeOpacity={0.85}
           onPress={() => {
             setScanned(false);
             isProcessingRef.current = false;
             setIsCameraOpen(true);
           }}
         >
-          <Ionicons name="scan-outline" size={24} color="#FFF" style={styles.buttonIcon} />
+          <Ionicons name="scan-outline" size={26} color="#FFF" style={styles.buttonIcon} />
           <ThemedText style={styles.scanButtonText}>Tap to Scan</ThemedText>
         </TouchableOpacity>
-      </ThemedView>
-    </ParallaxScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, alignItems: 'center', paddingTop: 30, paddingHorizontal: 20 },
-  titleContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  
-  // Removed custom letter spacing to allow natural wrapping
-  titleText: { 
-    fontFamily: 'OpenDyslexic-Bold', 
-    fontSize: 40, 
-    lineHeight: 48, 
-    paddingHorizontal: 4 
+  mainWrapper: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
-  subtitleText: { 
-    fontFamily: 'OpenDyslexic',
-    fontSize: 16, 
-    textAlign: 'center', 
-    opacity: 0.8, 
-    marginBottom: 50, 
-    lineHeight: 28, 
-    paddingHorizontal: 15 
+  heroCard: {
+    borderRadius: 24,
+    padding: 28,
+    paddingTop: 32,
+    paddingBottom: 32,
+    marginBottom: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  scanButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF6B6B', paddingVertical: 18, paddingHorizontal: 32, borderRadius: 999, width: '100%', shadowColor: '#FF6B6B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
-  buttonIcon: { marginRight: 10 },
-  scanButtonText: { 
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  titleText: {
     fontFamily: 'OpenDyslexic-Bold',
-    color: '#FFFFFF', 
-    fontSize: 18, 
+    fontSize: 34,
+    lineHeight: 48,
+    marginRight: 8,
+    includeFontPadding: Platform.OS === 'android',
   },
-  headerImage: { height: '100%', width: '100%', bottom: -20, opacity: 0.5, position: 'absolute' },
-  
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  
-  cameraContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'black' },
+  subtitleText: {
+    fontFamily: 'OpenDyslexic',
+    fontSize: 16,
+    lineHeight: 24,
+    opacity: 0.85,
+    marginBottom: 28,
+    textAlign: 'center',
+  },
+  iconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  featuresRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 28,
+    paddingHorizontal: 4,
+  },
+  featureItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  featureText: {
+    fontFamily: 'OpenDyslexic',
+    fontSize: 12,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  scanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    width: '100%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FF6B6B',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  buttonIcon: { marginRight: 12 },
+  scanButtonText: {
+    fontFamily: 'OpenDyslexic-Bold',
+    color: '#FFFFFF',
+    fontSize: 19,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  permissionCard: {
+    alignItems: 'center',
+    maxWidth: 320,
+  },
+  permissionTitle: {
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  permissionText: {
+    fontFamily: 'OpenDyslexic',
+    fontSize: 16,
+    lineHeight: 24,
+    opacity: 0.85,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  permissionButton: {
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+  },
+  permissionButtonText: {
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 16,
+    color: '#FFF',
+  },
+  loadingText: {
+    fontFamily: 'OpenDyslexic',
+    fontSize: 16,
+    marginTop: 20,
+    opacity: 0.9,
+  },
+  cameraContainer: { flex: 1, justifyContent: 'center', backgroundColor: '#0D0D0D' },
   camera: { flex: 1 },
   cameraTopBar: { paddingTop: 60, paddingHorizontal: 20, alignItems: 'flex-start', zIndex: 10 },
   scannerOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
-  scannerTarget: { width: 250, height: 250, borderWidth: 2, borderColor: '#00FF00', backgroundColor: 'transparent', borderRadius: 20, marginBottom: 20 },
-  scannerText: { 
-    fontFamily: 'OpenDyslexic-Bold',
-    color: 'white', 
-    fontSize: 18, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    padding: 10, 
-    borderRadius: 10,
+  scannerTarget: {
+    width: 260,
+    height: 260,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'transparent',
+    borderRadius: 24,
+    marginBottom: 24,
   },
-
-  resultsContainer: { flex: 1, backgroundColor: '#F8F9FA' },
-  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  backButtonText: { 
+  scannerText: {
+    fontFamily: 'OpenDyslexic-Bold',
+    color: 'white',
+    fontSize: 17,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+  },
+  resultsWrapper: { flex: 1 },
+  resultsContainer: { flex: 1 },
+  resultsContent: {
+    padding: 24,
+    paddingTop: 8,
+    paddingBottom: 40,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingVertical: 10,
+    paddingRight: 12,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
     fontFamily: 'OpenDyslexic',
-    fontSize: 16, 
-    marginLeft: 8, 
+    fontSize: 16,
+    marginLeft: 8,
     color: '#333',
   },
-  productImage: { width: '100%', height: 200, marginBottom: 20, borderRadius: 10 },
-  
-  // Adjusted line height for better multi-line title wrapping
-  productTitle: { 
+  productImage: {
+    width: '100%',
+    height: 220,
+    marginBottom: 24,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  productTitle: {
     fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 28, 
-    marginBottom: 4, 
+    fontSize: 26,
+    marginBottom: 6,
     color: '#1A1A1A',
-    lineHeight: 36, 
+    lineHeight: 34,
   },
-  brandText: { 
+  brandText: {
     fontFamily: 'OpenDyslexic',
-    fontSize: 16, 
-    color: '#666', 
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 24,
+  },
+  nutritionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 12 },
+  macroBox: {
+    flex: 1,
+    backgroundColor: 'white',
+    paddingVertical: 18,
+    borderRadius: 18,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  macroLabel: {
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 10,
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  macroValue: {
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 20,
+    color: '#333',
+  },
+  dataCard: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 20,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  
-  nutritionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, gap: 10 },
-  macroBox: { flex: 1, backgroundColor: 'white', paddingVertical: 15, borderRadius: 12, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
-  macroLabel: { 
+  sectionTitle: {
     fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 11, // Slightly smaller to prevent squishing on narrow screens
-    color: '#888', 
-    textTransform: 'uppercase', 
-    marginBottom: 4,
+    fontSize: 18,
+    marginBottom: 10,
   },
-  macroValue: { 
+  bodyText: {
     fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 18, 
-    color: '#333' 
-  },
-
-  dataCard: { backgroundColor: 'white', padding: 15, borderRadius: 15, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
-  sectionTitle: { 
-    fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 18, 
-    marginBottom: 8,
-  },
-  // Increased line height and explicit flex mapping for smooth wrapping
-  bodyText: { 
-    fontFamily: 'OpenDyslexic-Bold', 
-    fontSize: 16, // Reduced slightly to balance with the bold weight
-    lineHeight: 26, 
+    fontSize: 16,
+    lineHeight: 26,
     color: '#444',
-    flexWrap: 'wrap', // Forces wrapping behavior
-    flexShrink: 1 
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
 });

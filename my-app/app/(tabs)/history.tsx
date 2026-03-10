@@ -10,6 +10,10 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useScanHistory, type ScannedItem } from '@/contexts/scan-history-context';
+import {
+  useUserPreferences,
+  productMatchesUserRestrictions,
+} from '@/contexts/user-preferences-context';
 
 function formatScannedAt(date: Date): string {
   const now = new Date();
@@ -25,24 +29,46 @@ function formatScannedAt(date: Date): string {
   return date.toLocaleDateString();
 }
 
-function SensitivityAllergyPlaceholder({ item }: { item: ScannedItem }) {
-  const hasSensitivityFeature = item.sensitivityStatus !== null;
-  const hasAllergyFeature = item.allergyStatus !== null;
+function SensitivityAllergyStatus({ item }: { item: ScannedItem }) {
+  const { allergies, sensitivities } = useUserPreferences();
+  const { hasAllergyConflict, hasSensitivityConflict } = productMatchesUserRestrictions(
+    item.allergens,
+    allergies,
+    sensitivities
+  );
   const iconColor = useThemeColor({}, 'icon');
   const statusBg = useThemeColor({ light: '#E8EAED', dark: '#2A2D31' }, 'background');
+  const warningColor = '#E74C3C';
+
+  const sensitivityConfigured = sensitivities.length > 0;
+  const allergyConfigured = allergies.length > 0;
+
+  const sensitivityLabel = sensitivityConfigured
+    ? hasSensitivityConflict
+      ? 'Sensitivity: May affect'
+      : 'Sensitivity: Clear'
+    : 'Sensitivity: Not configured';
+  const allergyLabel = allergyConfigured
+    ? hasAllergyConflict
+      ? 'Allergy: May affect'
+      : 'Allergy: Clear'
+    : 'Allergy: Not configured';
+
+  const sensitivityIconColor = sensitivityConfigured && hasSensitivityConflict ? warningColor : iconColor;
+  const allergyIconColor = allergyConfigured && hasAllergyConflict ? warningColor : iconColor;
 
   return (
     <View style={styles.statusRow}>
       <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-        <Ionicons name="alert-circle-outline" size={14} color={iconColor} />
-        <ThemedText style={styles.statusPlaceholderText}>
-          Sensitivity: {hasSensitivityFeature ? 'Check' : 'Not configured'}
+        <Ionicons name="alert-circle-outline" size={14} color={sensitivityIconColor} />
+        <ThemedText style={[styles.statusPlaceholderText, hasSensitivityConflict && { color: warningColor }]}>
+          {sensitivityLabel}
         </ThemedText>
       </View>
       <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-        <Ionicons name="medical-outline" size={14} color={iconColor} />
-        <ThemedText style={styles.statusPlaceholderText}>
-          Allergy: {hasAllergyFeature ? 'Check' : 'Not configured'}
+        <Ionicons name="medical-outline" size={14} color={allergyIconColor} />
+        <ThemedText style={[styles.statusPlaceholderText, hasAllergyConflict && { color: warningColor }]}>
+          {allergyLabel}
         </ThemedText>
       </View>
     </View>
@@ -77,7 +103,7 @@ function HistoryItemCard({
             {item.brand || 'Unknown Brand'}
           </ThemedText>
           <ThemedText style={styles.timestamp}>{formatScannedAt(item.scannedAt)}</ThemedText>
-          <SensitivityAllergyPlaceholder item={item} />
+          <SensitivityAllergyStatus item={item} />
         </View>
         <TouchableOpacity onPress={onRemove} style={styles.removeButton} hitSlop={12}>
           <Ionicons name="close-circle-outline" size={24} color={iconColor} />
@@ -127,7 +153,7 @@ export default function HistoryScreen() {
           Scan History
         </ThemedText>
         <ThemedText style={styles.subtitle}>
-          Recently scanned items. Sensitivity and allergy checks coming soon.
+          Recently scanned items with sensitivity and allergy status based on your preferences.
         </ThemedText>
         {items.length > 0 && (
           <TouchableOpacity onPress={handleClearHistory} style={styles.clearButton}>
@@ -142,8 +168,8 @@ export default function HistoryScreen() {
           <Ionicons name="barcode-outline" size={64} color={Colors[colorScheme ?? 'light'].icon} />
           <ThemedText style={styles.emptyTitle}>No scans yet</ThemedText>
           <ThemedText style={styles.emptySubtitle}>
-            Scan items on the Home tab to see them here. Each item will show sensitivity and allergy
-            status once those features are enabled.
+            Scan items on the Home tab to see them here. Configure your allergies and sensitivities in
+            Preferences to see status for each product.
           </ThemedText>
         </View>
       ) : (
@@ -164,32 +190,32 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 },
+  header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 20 },
   title: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 28,
-    lineHeight: 38, // <--- ADDED: Gives the tall letters room so they don't clip!
+    lineHeight: 36,
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: 'OpenDyslexic',
     fontSize: 14,
-    lineHeight: 22, // <--- ADDED: Better readability
+    lineHeight: 22,
     opacity: 0.8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   clearButton: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
   clearButtonText: {
     fontFamily: 'OpenDyslexic',
     fontSize: 14,
     color: '#FF6B6B',
-    marginLeft: 6,
+    marginLeft: 8,
   },
   emptyState: {
     flex: 1,
@@ -200,90 +226,91 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 20,
-    lineHeight: 28, // <--- ADDED: Prevents clipping here too
-    marginTop: 16,
-    marginBottom: 8,
+    lineHeight: 28,
+    marginTop: 20,
+    marginBottom: 10,
   },
   emptySubtitle: {
     fontFamily: 'OpenDyslexic',
     fontSize: 16,
-    lineHeight: 24, // <--- ADDED: Better readability
+    lineHeight: 24,
     textAlign: 'center',
-    opacity: 0.7,
+    opacity: 0.75,
   },
   list: { flex: 1 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  listContent: { paddingHorizontal: 24, paddingBottom: 40 },
   card: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  cardHeader: { flexDirection: 'row', marginBottom: 12 },
+  cardHeader: { flexDirection: 'row', marginBottom: 14 },
   thumbnail: {
-    width: 64,
-    height: 64,
-    borderRadius: 10,
+    width: 68,
+    height: 68,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   thumbnailPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardContent: { flex: 1, marginLeft: 14, justifyContent: 'center', minWidth: 0 },
+  cardContent: { flex: 1, marginLeft: 16, justifyContent: 'center', minWidth: 0 },
   productName: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 16,
-    lineHeight: 22, // <--- ADDED
-    marginBottom: 2,
+    lineHeight: 22,
+    marginBottom: 4,
   },
   brand: {
     fontFamily: 'OpenDyslexic',
     fontSize: 13,
-    opacity: 0.7,
-    marginBottom: 4,
+    opacity: 0.75,
+    marginBottom: 6,
   },
   timestamp: {
     fontFamily: 'OpenDyslexic',
     fontSize: 12,
-    opacity: 0.6,
-    marginBottom: 6,
+    opacity: 0.65,
+    marginBottom: 8,
   },
-  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
   },
   statusPlaceholderText: {
     fontFamily: 'OpenDyslexic',
     fontSize: 11,
-    opacity: 0.8,
-    marginLeft: 4,
+    opacity: 0.85,
+    marginLeft: 6,
   },
-  removeButton: { padding: 4 },
+  removeButton: { padding: 6 },
   allergensSection: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(128,128,128,0.25)',
-    paddingTop: 12,
+    borderTopColor: 'rgba(128,128,128,0.2)',
+    paddingTop: 14,
+    marginTop: 2,
   },
   allergensLabel: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 12,
-    lineHeight: 18, // <--- ADDED
-    opacity: 0.8,
-    marginBottom: 4,
+    lineHeight: 18,
+    opacity: 0.85,
+    marginBottom: 6,
   },
-  allergensText: { 
+  allergensText: {
     fontFamily: 'OpenDyslexic',
     fontSize: 14,
-    lineHeight: 22, // <--- ADDED
+    lineHeight: 22,
     opacity: 0.9,
   },
 });
