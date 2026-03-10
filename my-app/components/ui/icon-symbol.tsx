@@ -20,6 +20,8 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'clock.fill': 'schedule',
   'sparkles': 'auto-awesome',
+  'gearshape.fill': 'settings',
+  'bubble.left.and.bubble.right.fill': 'chat-bubble',
 } as IconMapping;
 
 /**

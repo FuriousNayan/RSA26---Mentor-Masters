@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
+import { LanguageProvider } from '@/contexts/language-context';
 import { ScanHistoryProvider } from '@/contexts/scan-history-context';
 import { UserPreferencesProvider } from '@/contexts/user-preferences-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -18,6 +19,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <LanguageProvider>
       <ScanHistoryProvider>
       <UserPreferencesProvider>
       <Stack>
@@ -28,6 +30,7 @@ export default function RootLayout() {
       <StatusBar style="auto" />
       </UserPreferencesProvider>
       </ScanHistoryProvider>
+      </LanguageProvider>
     </ThemeProvider>
     </SafeAreaProvider>
   );

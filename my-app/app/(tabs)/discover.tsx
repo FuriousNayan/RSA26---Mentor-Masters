@@ -14,6 +14,7 @@ import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
+import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -25,6 +26,7 @@ import {
   productMatchesUserRestrictions,
   type UserPreferences,
 } from '@/contexts/user-preferences-context';
+import { useLanguage } from '@/contexts/language-context';
 import { searchSimilarProducts, type DiscoverProduct } from '@/services/discover-api';
 
 type RecommendationSection = {
@@ -48,6 +50,7 @@ function useRecommendations(
   notSafeForYou: RecommendationSection;
   alternativeSections: AlternativeSection[];
 } {
+  const { t, locale } = useLanguage();
   return useMemo(() => {
     const safe: ScannedItem[] = [];
     const notSafe: ScannedItem[] = [];
@@ -67,20 +70,20 @@ function useRecommendations(
 
     return {
       safeForYou: {
-        title: 'Safe for you',
-        subtitle: 'Items from your history that match your preferences',
+        title: t('discover.safeForYou'),
+        subtitle: t('discover.safeForYouSubtitle'),
         items: safe,
         isSafe: true,
       },
       notSafeForYou: {
-        title: 'May not suit you',
-        subtitle: 'History items that may conflict with your allergies or sensitivities',
+        title: t('discover.mayNotSuitYou'),
+        subtitle: t('discover.mayNotSuitYouSubtitle'),
         items: notSafe,
         isSafe: false,
       },
       alternativeSections: [] as AlternativeSection[],
     };
-  }, [historyItems, preferences]);
+  }, [historyItems, preferences, t, locale]);
 }
 
 function ProductCard({
@@ -182,6 +185,7 @@ export default function DiscoverScreen() {
   const [loadingAlternativesFor, setLoadingAlternativesFor] = useState<string | null>(null);
   const alternativesCacheRef = useRef<Record<string, DiscoverProduct[]>>({});
 
+  const { t } = useLanguage();
   const { safeForYou, notSafeForYou } = useRecommendations(items, preferences);
 
   const [fontsLoaded] = useFonts({
@@ -248,20 +252,20 @@ export default function DiscoverScreen() {
     setRefreshing(false);
   }, []);
 
-  const backgroundColor = useThemeColor({}, 'background');
   const colorScheme = useColorScheme();
 
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
-      <ThemedView style={styles.container}>
+    <AppBackground>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ThemedView lightColor="transparent" darkColor="transparent" style={styles.container}>
         <View style={styles.header}>
           <ThemedText type="title" style={styles.title}>
-            Discover
+            {t('discover.title')}
           </ThemedText>
           <ThemedText style={styles.subtitle}>
-            Recommendations based on your scan history, filtered for your allergies and sensitivities.
+            {t('discover.subtitle')}
           </ThemedText>
           <TouchableOpacity
             style={styles.preferencesButton}
@@ -269,7 +273,7 @@ export default function DiscoverScreen() {
           >
             <Ionicons name="settings-outline" size={20} color="#0a7ea4" />
             <ThemedText style={styles.preferencesButtonText}>
-              {preferences.hasPreferences ? 'Edit preferences' : 'Set allergies & sensitivities'}
+              {preferences.hasPreferences ? t('discover.editPreferences') : t('discover.setPreferences')}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -286,8 +290,7 @@ export default function DiscoverScreen() {
             <ThemedView lightColor="#FFF8E1" darkColor="#3D3500" style={styles.banner}>
               <Ionicons name="information-circle" size={24} color="#F57C00" />
               <ThemedText style={styles.bannerText}>
-                Add your allergies and food sensitivities in preferences for personalized
-                recommendations and safe alternatives.
+                {t('discover.addPreferencesBanner')}
               </ThemedText>
             </ThemedView>
           )}
@@ -295,9 +298,9 @@ export default function DiscoverScreen() {
           {items.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="sparkles-outline" size={64} color={Colors[colorScheme ?? 'light'].icon} />
-              <ThemedText style={styles.emptyTitle}>No history yet</ThemedText>
+              <ThemedText style={styles.emptyTitle}>{t('discover.noHistoryYet')}</ThemedText>
               <ThemedText style={styles.emptySubtitle}>
-                Scan some items on the Home tab to get personalized recommendations here.
+                {t('discover.noHistorySubtitle')}
               </ThemedText>
             </View>
           ) : (
@@ -338,16 +341,14 @@ export default function DiscoverScreen() {
                           ) : (
                             <>
                               <ThemedText style={styles.alternativesLabel}>
-                                Safer alternatives for you:
+                                {t('discover.saferAlternatives')}
                               </ThemedText>
                               {(alternativesData[item.id] ?? []).map((alt) => (
                                 <AlternativeCard key={alt.code} product={alt} />
                               ))}
                               {(alternativesData[item.id] ?? []).length === 0 && (
                                 <ThemedText style={styles.noAlternatives}>
-                                  No alternatives without your allergens found. Try searching for a
-                                  similar product by category (e.g. "dark chocolate" instead of the
-                                  full name).
+                                  {t('discover.noAlternatives')}
                                 </ThemedText>
                               )}
                             </>
@@ -361,8 +362,7 @@ export default function DiscoverScreen() {
 
               {safeForYou.items.length === 0 && notSafeForYou.items.length === 0 && (
                 <ThemedText style={styles.emptySubtitle}>
-                  All your scanned items are in your history. Add preferences to see personalized
-                  filtering.
+                  {t('discover.allInHistory')}
                 </ThemedText>
               )}
             </>
@@ -370,6 +370,7 @@ export default function DiscoverScreen() {
         </ScrollView>
       </ThemedView>
     </SafeAreaView>
+    </AppBackground>
   );
 }
 

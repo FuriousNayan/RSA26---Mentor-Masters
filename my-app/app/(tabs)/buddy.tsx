@@ -12,8 +12,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useLanguage } from '@/contexts/language-context';
 
 // --- AGGRESSIVE POLYFILL FOR REACT NATIVE ---
 if (typeof global.AbortController === 'undefined') {
@@ -55,18 +57,28 @@ export default function BuddyScreen() {
     'OpenDyslexic-Bold': require('@/assets/images/fonts/OpenDyslexic-Bold.otf'),
   });
 
+  const { t, locale } = useLanguage();
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<{ text: string; sender: 'user' | 'bot' }[]>([
-    { text: "Hi! I'm your NutriNav Buddy. Ask me anything about nutrition!", sender: 'bot' }
+    { text: t('buddy.welcomeMessage'), sender: 'bot' }
   ]);
+
+  // Update welcome message when language changes
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length > 0 && prev[0].sender === 'bot') {
+        return [{ text: t('buddy.welcomeMessage'), sender: 'bot' as const }, ...prev.slice(1)];
+      }
+      return prev;
+    });
+  }, [locale, t]);
   
   const chatRef = useRef<any>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
 
   // --- THEME COLORS ---
-  const bgColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const cardColor = useThemeColor({ light: '#FFFFFF', dark: '#1E1E1E' }, 'background');
   const inputBg = useThemeColor({ light: '#F0F2F5', dark: '#2C2C2E' }, 'background');
@@ -109,8 +121,9 @@ export default function BuddyScreen() {
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top']}>
-      <KeyboardAvoidingView 
+    <AppBackground>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <KeyboardAvoidingView 
         style={styles.container} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
@@ -124,7 +137,7 @@ export default function BuddyScreen() {
 
         <ScrollView 
           ref={scrollViewRef}
-          style={[styles.chatArea, { backgroundColor: bgColor }]} 
+          style={styles.chatArea} 
           contentContainerStyle={styles.chatContent}
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
           keyboardDismissMode="on-drag"
@@ -154,7 +167,7 @@ export default function BuddyScreen() {
           <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
             <TextInput
               style={[styles.input, { color: textColor }]}
-              placeholder="Ask me anything..."
+              placeholder={t('buddy.placeholder')}
               placeholderTextColor="#888"
               value={inputText}
               onChangeText={setInputText}
@@ -171,6 +184,7 @@ export default function BuddyScreen() {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </AppBackground>
   );
 }
 

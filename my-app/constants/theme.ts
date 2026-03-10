@@ -8,6 +8,12 @@ import { Platform } from 'react-native';
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 
+/** Same-luminance gradient colors for accessible backgrounds (light family) */
+export const GradientColorsLight = ['#FAFAF9', '#F0EFED', '#E8E6E4'] as const;
+
+/** Same-luminance gradient colors for accessible backgrounds (dark family) */
+export const GradientColorsDark = ['#151718', '#1C1B1A', '#222120'] as const;
+
 export const Colors = {
   light: {
     text: '#11181C',

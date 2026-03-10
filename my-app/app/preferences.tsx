@@ -13,10 +13,12 @@ import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 
+import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserPreferences } from '@/contexts/user-preferences-context';
+import { useLanguage } from '@/contexts/language-context';
 
 const COMMON_ALLERGENS = [
   'Gluten',
@@ -76,6 +78,7 @@ export default function PreferencesScreen() {
     addSensitivity,
     removeSensitivity,
   } = useUserPreferences();
+  const { t } = useLanguage();
   const [newAllergy, setNewAllergy] = useState('');
   const [newSensitivity, setNewSensitivity] = useState('');
 
@@ -84,20 +87,19 @@ export default function PreferencesScreen() {
     'OpenDyslexic-Bold': require('@/assets/images/fonts/OpenDyslexic-Bold.otf'),
   });
 
-  const backgroundColor = useThemeColor({}, 'background');
-
   if (!fontsLoaded) return null;
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: 'Allergies & Sensitivities',
-          headerBackTitle: 'Back',
+          title: t('preferences.title'),
+          headerBackTitle: t('common.back'),
           headerShadowVisible: false,
         }}
       />
-      <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['bottom']}>
+      <AppBackground>
+        <SafeAreaView style={styles.container} edges={['bottom']}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboard}
@@ -109,10 +111,10 @@ export default function PreferencesScreen() {
           >
             <View style={styles.section}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Allergies
+                {t('preferences.allergies')}
               </ThemedText>
               <ThemedText style={styles.sectionHint}>
-                Products containing these will be flagged and alternatives suggested.
+                {t('preferences.allergiesHint')}
               </ThemedText>
               <View style={styles.tagRow}>
                 {allergies.map((a) => (
@@ -135,7 +137,7 @@ export default function PreferencesScreen() {
               <View style={styles.inputRow}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Add custom allergy..."
+                  placeholder={t('preferences.addAllergyPlaceholder')}
                   placeholderTextColor="#999"
                   value={newAllergy}
                   onChangeText={setNewAllergy}
@@ -163,10 +165,10 @@ export default function PreferencesScreen() {
 
             <View style={styles.section}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Food sensitivities
+                {t('preferences.sensitivities')}
               </ThemedText>
               <ThemedText style={styles.sectionHint}>
-                Items you prefer to avoid or that cause discomfort.
+                {t('preferences.sensitivitiesHint')}
               </ThemedText>
               <View style={styles.tagRow}>
                 {sensitivities.map((s) => (
@@ -194,7 +196,7 @@ export default function PreferencesScreen() {
               <View style={styles.inputRow}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Add custom sensitivity..."
+                  placeholder={t('preferences.addSensitivityPlaceholder')}
                   placeholderTextColor="#999"
                   value={newSensitivity}
                   onChangeText={setNewSensitivity}
@@ -222,6 +224,7 @@ export default function PreferencesScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+      </AppBackground>
     </>
   );
 }

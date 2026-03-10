@@ -1,9 +1,12 @@
+import { useCallback, useState } from 'react';
 import { Image } from 'expo-image';
 import { StyleSheet, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -14,23 +17,25 @@ import {
   useUserPreferences,
   productMatchesUserRestrictions,
 } from '@/contexts/user-preferences-context';
+import { useLanguage } from '@/contexts/language-context';
 
-function formatScannedAt(date: Date): string {
+function formatScannedAt(date: Date, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return t('history.justNow');
+  if (diffMins < 60) return t('history.minutesAgo', { count: diffMins });
+  if (diffHours < 24) return t('history.hoursAgo', { count: diffHours });
+  if (diffDays < 7) return t('history.daysAgo', { count: diffDays });
   return date.toLocaleDateString();
 }
 
 function SensitivityAllergyStatus({ item }: { item: ScannedItem }) {
   const { allergies, sensitivities } = useUserPreferences();
+  const { t } = useLanguage();
   const { hasAllergyConflict, hasSensitivityConflict } = productMatchesUserRestrictions(
     item.allergens,
     allergies,
@@ -45,14 +50,14 @@ function SensitivityAllergyStatus({ item }: { item: ScannedItem }) {
 
   const sensitivityLabel = sensitivityConfigured
     ? hasSensitivityConflict
-      ? 'Sensitivity: May affect'
-      : 'Sensitivity: Clear'
-    : 'Sensitivity: Not configured';
+      ? t('history.sensitivityMayAffect')
+      : t('history.sensitivityClear')
+    : t('history.sensitivityNotConfigured');
   const allergyLabel = allergyConfigured
     ? hasAllergyConflict
-      ? 'Allergy: May affect'
-      : 'Allergy: Clear'
-    : 'Allergy: Not configured';
+      ? t('history.allergyMayAffect')
+      : t('history.allergyClear')
+    : t('history.allergyNotConfigured');
 
   const sensitivityIconColor = sensitivityConfigured && hasSensitivityConflict ? warningColor : iconColor;
   const allergyIconColor = allergyConfigured && hasAllergyConflict ? warningColor : iconColor;
@@ -78,9 +83,11 @@ function SensitivityAllergyStatus({ item }: { item: ScannedItem }) {
 function HistoryItemCard({
   item,
   onRemove,
+  t,
 }: {
   item: ScannedItem;
   onRemove: () => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const colorScheme = useColorScheme();
   const iconColor = Colors[colorScheme ?? 'light'].icon;
@@ -102,7 +109,7 @@ function HistoryItemCard({
           <ThemedText style={styles.brand} numberOfLines={1}>
             {item.brand || 'Unknown Brand'}
           </ThemedText>
-          <ThemedText style={styles.timestamp}>{formatScannedAt(item.scannedAt)}</ThemedText>
+          <ThemedText style={styles.timestamp}>{formatScannedAt(item.scannedAt, t)}</ThemedText>
           <SensitivityAllergyStatus item={item} />
         </View>
         <TouchableOpacity onPress={onRemove} style={styles.removeButton} hitSlop={12}>
@@ -110,7 +117,7 @@ function HistoryItemCard({
         </TouchableOpacity>
       </View>
       <View style={styles.allergensSection}>
-        <ThemedText style={styles.allergensLabel}>Allergens:</ThemedText>
+        <ThemedText style={styles.allergensLabel}>{t('history.allergens')}</ThemedText>
         <ThemedText style={styles.allergensText} numberOfLines={2}>
           {item.allergens}
         </ThemedText>
@@ -121,7 +128,16 @@ function HistoryItemCard({
 
 export default function HistoryScreen() {
   const { items, clearHistory, removeItem } = useScanHistory();
+  const { t } = useLanguage();
   const colorScheme = useColorScheme();
+  const [, setRefresh] = useState(0);
+
+  // Force re-render when tab gains focus so we always show current language
+  useFocusEffect(
+    useCallback(() => {
+      setRefresh((n) => n + 1);
+    }, [])
+  );
 
   const [fontsLoaded] = useFonts({
     OpenDyslexic: require('@/assets/images/fonts/OpenDyslexic-Regular.otf'),
@@ -130,11 +146,11 @@ export default function HistoryScreen() {
 
   const handleClearHistory = () => {
     Alert.alert(
-      'Clear History',
-      'Remove all recently scanned items?',
+      t('history.clearHistory'),
+      t('history.clearHistoryConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: clearHistory },
+        { text: t('history.cancel'), style: 'cancel' },
+        { text: t('history.clear'), style: 'destructive', onPress: clearHistory },
       ]
     );
   };
@@ -143,22 +159,21 @@ export default function HistoryScreen() {
     return null;
   }
 
-  const backgroundColor = useThemeColor({}, 'background');
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
-      <ThemedView style={styles.container}>
+    <AppBackground>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ThemedView lightColor="transparent" darkColor="transparent" style={styles.container}>
       <View style={styles.header}>
         <ThemedText type="title" style={styles.title}>
-          Scan History
+          {t('history.title')}
         </ThemedText>
         <ThemedText style={styles.subtitle}>
-          Recently scanned items with sensitivity and allergy status based on your preferences.
+          {t('history.subtitle')}
         </ThemedText>
         {items.length > 0 && (
           <TouchableOpacity onPress={handleClearHistory} style={styles.clearButton}>
             <Ionicons name="trash-outline" size={18} color="#FF6B6B" />
-            <ThemedText style={styles.clearButtonText}>Clear History</ThemedText>
+            <ThemedText style={styles.clearButtonText}>{t('history.clearHistory')}</ThemedText>
           </TouchableOpacity>
         )}
       </View>
@@ -166,10 +181,9 @@ export default function HistoryScreen() {
       {items.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="barcode-outline" size={64} color={Colors[colorScheme ?? 'light'].icon} />
-          <ThemedText style={styles.emptyTitle}>No scans yet</ThemedText>
+          <ThemedText style={styles.emptyTitle}>{t('history.emptyTitle')}</ThemedText>
           <ThemedText style={styles.emptySubtitle}>
-            Scan items on the Home tab to see them here. Configure your allergies and sensitivities in
-            Preferences to see status for each product.
+            {t('history.emptySubtitle')}
           </ThemedText>
         </View>
       ) : (
@@ -179,12 +193,13 @@ export default function HistoryScreen() {
           showsVerticalScrollIndicator={false}
         >
           {items.map((item) => (
-            <HistoryItemCard key={item.id} item={item} onRemove={() => removeItem(item.id)} />
+            <HistoryItemCard key={item.id} item={item} onRemove={() => removeItem(item.id)} t={t} />
           ))}
         </ScrollView>
       )}
-      </ThemedView>
-    </SafeAreaView>
+        </ThemedView>
+      </SafeAreaView>
+    </AppBackground>
   );
 }
 

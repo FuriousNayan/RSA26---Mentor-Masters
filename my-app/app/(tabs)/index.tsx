@@ -13,14 +13,16 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HelloWave } from '@/components/hello-wave';
+import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useScanHistory } from '@/contexts/scan-history-context';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function HomeScreen() {
   const { addItem } = useScanHistory();
+  const { t } = useLanguage();
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [scanned, setScanned] = useState(false);
@@ -33,7 +35,6 @@ export default function HomeScreen() {
     'OpenDyslexic-Bold': require('@/assets/images/fonts/OpenDyslexic-Bold.otf'),
   });
 
-  const backgroundColor = useThemeColor({}, 'background');
   const cardBg = useThemeColor(
     { light: '#FEF7F6', dark: '#2A1F1E' },
     'background'
@@ -64,12 +65,12 @@ export default function HomeScreen() {
           allergens: getAllergens(product),
         });
       } else {
-        alert('Product not found in the database. Try another item!');
+        alert(t('home.productNotFound'));
         setFoodData(null);
       }
     } catch (error) {
       console.error(error);
-      alert('Network error. Could not fetch food data.');
+      alert(t('home.networkError'));
     } finally {
       setIsLoading(false);
       isProcessingRef.current = false;
@@ -124,12 +125,12 @@ export default function HomeScreen() {
       <ThemedView style={styles.centerContainer}>
         <View style={styles.permissionCard}>
           <Ionicons name="camera-outline" size={56} color="#FF6B6B" style={{ marginBottom: 16 }} />
-          <ThemedText style={styles.permissionTitle}>Camera access needed</ThemedText>
+          <ThemedText style={styles.permissionTitle}>{t('home.cameraAccessNeeded')}</ThemedText>
           <ThemedText style={styles.permissionText}>
-            NutriNav needs your camera to scan barcodes and identify products.
+            {t('home.cameraPermissionText')}
           </ThemedText>
           <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-            <ThemedText style={styles.permissionButtonText}>Grant Permission</ThemedText>
+            <ThemedText style={styles.permissionButtonText}>{t('home.grantPermission')}</ThemedText>
           </TouchableOpacity>
         </View>
       </ThemedView>
@@ -140,7 +141,7 @@ export default function HomeScreen() {
     return (
       <ThemedView style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#FF6B6B" />
-        <ThemedText style={styles.loadingText}>Looking up food data...</ThemedText>
+        <ThemedText style={styles.loadingText}>{t('home.lookingUpData')}</ThemedText>
       </ThemedView>
     );
   }
@@ -161,7 +162,7 @@ export default function HomeScreen() {
         >
           <TouchableOpacity style={styles.backButton} onPress={resetScanner} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={22} color="#333" />
-            <ThemedText style={styles.backButtonText}>Scan another</ThemedText>
+            <ThemedText style={styles.backButtonText}>{t('home.scanAnother')}</ThemedText>
           </TouchableOpacity>
 
           {foodData.image_url && (
@@ -178,26 +179,26 @@ export default function HomeScreen() {
 
           <View style={styles.nutritionRow}>
             <View style={styles.macroBox}>
-              <ThemedText style={styles.macroLabel}>Calories</ThemedText>
+              <ThemedText style={styles.macroLabel}>{t('home.calories')}</ThemedText>
               <ThemedText style={styles.macroValue}>{calories}</ThemedText>
             </View>
             <View style={styles.macroBox}>
-              <ThemedText style={styles.macroLabel}>Fat</ThemedText>
+              <ThemedText style={styles.macroLabel}>{t('home.fat')}</ThemedText>
               <ThemedText style={styles.macroValue}>{fat}g</ThemedText>
             </View>
             <View style={styles.macroBox}>
-              <ThemedText style={styles.macroLabel}>Carbs</ThemedText>
+              <ThemedText style={styles.macroLabel}>{t('home.carbs')}</ThemedText>
               <ThemedText style={styles.macroValue}>{carbs}g</ThemedText>
             </View>
             <View style={styles.macroBox}>
-              <ThemedText style={styles.macroLabel}>Protein</ThemedText>
+              <ThemedText style={styles.macroLabel}>{t('home.protein')}</ThemedText>
               <ThemedText style={styles.macroValue}>{protein}g</ThemedText>
             </View>
           </View>
 
           <View style={[styles.dataCard, { borderColor: '#FF6B6B', borderWidth: 2 }]}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: '#FF6B6B' }]}>
-              Contains Allergens:
+              {t('home.containsAllergens')}
             </ThemedText>
             <ThemedText style={styles.bodyText}>
               {getAllergens(foodData)}
@@ -226,7 +227,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.scannerOverlay}>
             <View style={styles.scannerTarget} />
-            <ThemedText style={styles.scannerText}>Point at a barcode</ThemedText>
+            <ThemedText style={styles.scannerText}>{t('home.pointAtBarcode')}</ThemedText>
           </View>
         </CameraView>
       </View>
@@ -234,8 +235,9 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.mainWrapper, { backgroundColor }]} edges={['top']}>
-      <ScrollView
+    <AppBackground>
+      <SafeAreaView style={styles.mainWrapper} edges={['top']}>
+        <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -243,12 +245,11 @@ export default function HomeScreen() {
         <View style={[styles.heroCard, { backgroundColor: cardBg }]}>
           <View style={styles.titleRow}>
             <ThemedText type="title" style={styles.titleText}>
-              NutriNav
+              {t('home.title')}
             </ThemedText>
-            <HelloWave />
           </View>
           <ThemedText style={styles.subtitleText}>
-            Scan your food for an instant allergy and nutrition report.
+            {t('home.subtitle')}
           </ThemedText>
           <View style={[styles.iconCircle, { backgroundColor: `${iconTint}18` }]}>
             <Ionicons name="barcode-outline" size={48} color={iconTint} />
@@ -258,15 +259,15 @@ export default function HomeScreen() {
         <View style={styles.featuresRow}>
           <View style={styles.featureItem}>
             <Ionicons name="shield-checkmark-outline" size={22} color={iconTint} />
-            <ThemedText style={[styles.featureText, { color: featureColor }]}>Allergy check</ThemedText>
+            <ThemedText style={[styles.featureText, { color: featureColor }]}>{t('home.allergyCheck')}</ThemedText>
           </View>
           <View style={styles.featureItem}>
             <Ionicons name="nutrition-outline" size={22} color={iconTint} />
-            <ThemedText style={[styles.featureText, { color: featureColor }]}>Nutrition facts</ThemedText>
+            <ThemedText style={[styles.featureText, { color: featureColor }]}>{t('home.nutritionFacts')}</ThemedText>
           </View>
           <View style={styles.featureItem}>
             <Ionicons name="flash-outline" size={22} color={iconTint} />
-            <ThemedText style={[styles.featureText, { color: featureColor }]}>Instant scan</ThemedText>
+            <ThemedText style={[styles.featureText, { color: featureColor }]}>{t('home.instantScan')}</ThemedText>
           </View>
         </View>
 
@@ -280,10 +281,11 @@ export default function HomeScreen() {
           }}
         >
           <Ionicons name="scan-outline" size={26} color="#FFF" style={styles.buttonIcon} />
-          <ThemedText style={styles.scanButtonText}>Tap to Scan</ThemedText>
+          <ThemedText style={styles.scanButtonText}>{t('home.tapToScan')}</ThemedText>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
+    </AppBackground>
   );
 }
 
@@ -324,7 +326,6 @@ const styles = StyleSheet.create({
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 34,
     lineHeight: 48,
-    marginRight: 8,
     includeFontPadding: Platform.OS === 'android',
   },
   subtitleText: {
