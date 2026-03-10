@@ -17,6 +17,7 @@
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "async-storage": "^0.1.0",
+    "eas-cli": "^18.3.0",
     "expo": "~54.0.33",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
@@ -46,7 +47,6 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "eas-cli": "^18.2.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
