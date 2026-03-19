@@ -30,6 +30,7 @@ export default {
     lookingUpData: 'Looking up food data...',
     productNotFound: 'Product not found in the database. Try another item!',
     networkError: 'Network error. Could not fetch food data.',
+    myPreferences: 'My Sensitivities',
   },
   discover: {
     title: 'Discover',

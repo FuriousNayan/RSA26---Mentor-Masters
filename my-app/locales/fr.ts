@@ -30,6 +30,7 @@ export default {
     lookingUpData: 'Recherche des données alimentaires...',
     productNotFound: 'Produit introuvable dans la base de données. Essayez un autre !',
     networkError: 'Erreur réseau. Impossible de récupérer les données.',
+    myPreferences: 'Mes Sensibilités',
   },
   discover: {
     title: 'Découvrir',

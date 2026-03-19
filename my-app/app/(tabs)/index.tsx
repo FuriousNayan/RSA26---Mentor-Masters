@@ -13,6 +13,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useRouter } from 'expo-router';
 import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -23,6 +24,7 @@ import { useLanguage } from '@/contexts/language-context';
 export default function HomeScreen() {
   const { addItem } = useScanHistory();
   const { t } = useLanguage();
+  const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [scanned, setScanned] = useState(false);
@@ -41,6 +43,8 @@ export default function HomeScreen() {
   );
   const iconTint = useThemeColor({ light: '#FF6B6B', dark: '#FF8A7A' }, 'tint');
   const featureColor = useThemeColor({ light: '#687076', dark: '#9BA1A6' }, 'icon');
+  const macroBg = useThemeColor({ light: '#FFFFFF', dark: '#2A2A2A' }, 'background');
+  const macroTextColor = useThemeColor({ light: '#333', dark: '#ECEDEE' }, 'text');
 
   const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (isProcessingRef.current) return;
@@ -155,13 +159,14 @@ export default function HomeScreen() {
 
     return (
       <ThemedView style={styles.resultsWrapper}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView
           style={styles.resultsContainer}
           contentContainerStyle={styles.resultsContent}
           showsVerticalScrollIndicator={false}
         >
           <TouchableOpacity style={styles.backButton} onPress={resetScanner} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color="#333" />
+            <Ionicons name="arrow-back" size={22} color={iconTint} />
             <ThemedText style={styles.backButtonText}>{t('home.scanAnother')}</ThemedText>
           </TouchableOpacity>
 
@@ -178,21 +183,21 @@ export default function HomeScreen() {
           </ThemedText>
 
           <View style={styles.nutritionRow}>
-            <View style={styles.macroBox}>
-              <ThemedText style={styles.macroLabel}>{t('home.calories')}</ThemedText>
-              <ThemedText style={styles.macroValue}>{calories}</ThemedText>
+            <View style={[styles.macroBox, { backgroundColor: macroBg }]}>
+              <ThemedText style={styles.macroLabel} numberOfLines={1} adjustsFontSizeToFit>{t('home.calories')}</ThemedText>
+              <ThemedText style={[styles.macroValue, { color: macroTextColor }]} numberOfLines={1} adjustsFontSizeToFit>{calories}</ThemedText>
             </View>
-            <View style={styles.macroBox}>
-              <ThemedText style={styles.macroLabel}>{t('home.fat')}</ThemedText>
-              <ThemedText style={styles.macroValue}>{fat}g</ThemedText>
+            <View style={[styles.macroBox, { backgroundColor: macroBg }]}>
+              <ThemedText style={styles.macroLabel} numberOfLines={1} adjustsFontSizeToFit>{t('home.fat')}</ThemedText>
+              <ThemedText style={[styles.macroValue, { color: macroTextColor }]} numberOfLines={1} adjustsFontSizeToFit>{fat}g</ThemedText>
             </View>
-            <View style={styles.macroBox}>
-              <ThemedText style={styles.macroLabel}>{t('home.carbs')}</ThemedText>
-              <ThemedText style={styles.macroValue}>{carbs}g</ThemedText>
+            <View style={[styles.macroBox, { backgroundColor: macroBg }]}>
+              <ThemedText style={styles.macroLabel} numberOfLines={1} adjustsFontSizeToFit>{t('home.carbs')}</ThemedText>
+              <ThemedText style={[styles.macroValue, { color: macroTextColor }]} numberOfLines={1} adjustsFontSizeToFit>{carbs}g</ThemedText>
             </View>
-            <View style={styles.macroBox}>
-              <ThemedText style={styles.macroLabel}>{t('home.protein')}</ThemedText>
-              <ThemedText style={styles.macroValue}>{protein}g</ThemedText>
+            <View style={[styles.macroBox, { backgroundColor: macroBg }]}>
+              <ThemedText style={styles.macroLabel} numberOfLines={1} adjustsFontSizeToFit>{t('home.protein')}</ThemedText>
+              <ThemedText style={[styles.macroValue, { color: macroTextColor }]} numberOfLines={1} adjustsFontSizeToFit>{protein}g</ThemedText>
             </View>
           </View>
 
@@ -205,6 +210,7 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
         </ScrollView>
+        </SafeAreaView>
       </ThemedView>
     );
   }
@@ -282,6 +288,15 @@ export default function HomeScreen() {
         >
           <Ionicons name="scan-outline" size={26} color="#FFF" style={styles.buttonIcon} />
           <ThemedText style={styles.scanButtonText}>{t('home.tapToScan')}</ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.preferencesButton}
+          activeOpacity={0.85}
+          onPress={() => router.push('/preferences')}
+        >
+          <Ionicons name="settings-outline" size={26} color="#FFF" style={styles.buttonIcon} />
+          <ThemedText style={styles.scanButtonText}>{t('home.myPreferences')}</ThemedText>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -381,6 +396,28 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  preferencesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6B8EFF',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    width: '100%',
+    marginTop: 14,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#6B8EFF',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
   buttonIcon: { marginRight: 12 },
   scanButtonText: {
     fontFamily: 'OpenDyslexic-Bold',
@@ -469,7 +506,6 @@ const styles = StyleSheet.create({
     fontFamily: 'OpenDyslexic',
     fontSize: 16,
     marginLeft: 8,
-    color: '#333',
   },
   productImage: {
     width: '100%',
@@ -482,7 +518,6 @@ const styles = StyleSheet.create({
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 26,
     marginBottom: 6,
-    color: '#1A1A1A',
     lineHeight: 34,
   },
   brandText: {
@@ -491,11 +526,11 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 24,
   },
-  nutritionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 12 },
+  nutritionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 8 },
   macroBox: {
     flex: 1,
-    backgroundColor: 'white',
-    paddingVertical: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     borderRadius: 18,
     alignItems: 'center',
     shadowColor: '#000',
@@ -506,16 +541,15 @@ const styles = StyleSheet.create({
   },
   macroLabel: {
     fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 10,
+    fontSize: 9,
     color: '#888',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     marginBottom: 6,
   },
   macroValue: {
     fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 20,
-    color: '#333',
+    fontSize: 17,
   },
   dataCard: {
     backgroundColor: 'white',
