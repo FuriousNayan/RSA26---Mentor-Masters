@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Image } from 'expo-image';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Palette } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useScanHistory, type ScannedItem } from '@/contexts/scan-history-context';
@@ -41,9 +41,8 @@ function SensitivityAllergyStatus({ item }: { item: ScannedItem }) {
     allergies,
     sensitivities
   );
-  const iconColor = useThemeColor({}, 'icon');
-  const statusBg = useThemeColor({ light: '#E8EAED', dark: '#2A2D31' }, 'background');
-  const warningColor = '#E74C3C';
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const sensitivityConfigured = sensitivities.length > 0;
   const allergyConfigured = allergies.length > 0;
@@ -59,20 +58,48 @@ function SensitivityAllergyStatus({ item }: { item: ScannedItem }) {
       : t('history.allergyClear')
     : t('history.allergyNotConfigured');
 
-  const sensitivityIconColor = sensitivityConfigured && hasSensitivityConflict ? warningColor : iconColor;
-  const allergyIconColor = allergyConfigured && hasAllergyConflict ? warningColor : iconColor;
+  const safeBg = isDark ? 'rgba(16,185,129,0.18)' : 'rgba(16,185,129,0.12)';
+  const safeText = isDark ? '#6EE7B7' : '#047857';
+  const warnBg = isDark ? 'rgba(239,68,68,0.22)' : 'rgba(239,68,68,0.12)';
+  const warnText = isDark ? '#FCA5A5' : '#B91C1C';
+  const neutralBg = isDark ? 'rgba(242,248,255,0.08)' : 'rgba(9,25,107,0.06)';
+  const neutralText = isDark ? '#A8B3D8' : '#3B4682';
+
+  const sensitivityBg = !sensitivityConfigured
+    ? neutralBg
+    : hasSensitivityConflict
+    ? warnBg
+    : safeBg;
+  const sensitivityFg = !sensitivityConfigured
+    ? neutralText
+    : hasSensitivityConflict
+    ? warnText
+    : safeText;
+  const allergyBg = !allergyConfigured ? neutralBg : hasAllergyConflict ? warnBg : safeBg;
+  const allergyFg = !allergyConfigured ? neutralText : hasAllergyConflict ? warnText : safeText;
+
+  const sensitivityIcon = !sensitivityConfigured
+    ? 'help-circle-outline'
+    : hasSensitivityConflict
+    ? 'alert-circle'
+    : 'checkmark-circle';
+  const allergyIcon = !allergyConfigured
+    ? 'help-circle-outline'
+    : hasAllergyConflict
+    ? 'warning'
+    : 'shield-checkmark';
 
   return (
     <View style={styles.statusRow}>
-      <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-        <Ionicons name="alert-circle-outline" size={14} color={sensitivityIconColor} />
-        <ThemedText style={[styles.statusPlaceholderText, hasSensitivityConflict && { color: warningColor }]}>
+      <View style={[styles.statusBadge, { backgroundColor: sensitivityBg }]}>
+        <Ionicons name={sensitivityIcon as any} size={13} color={sensitivityFg} />
+        <ThemedText style={[styles.statusPlaceholderText, { color: sensitivityFg }]}>
           {sensitivityLabel}
         </ThemedText>
       </View>
-      <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-        <Ionicons name="medical-outline" size={14} color={allergyIconColor} />
-        <ThemedText style={[styles.statusPlaceholderText, hasAllergyConflict && { color: warningColor }]}>
+      <View style={[styles.statusBadge, { backgroundColor: allergyBg }]}>
+        <Ionicons name={allergyIcon as any} size={13} color={allergyFg} />
+        <ThemedText style={[styles.statusPlaceholderText, { color: allergyFg }]}>
           {allergyLabel}
         </ThemedText>
       </View>
@@ -91,14 +118,30 @@ function HistoryItemCard({
 }) {
   const colorScheme = useColorScheme();
   const iconColor = Colors[colorScheme ?? 'light'].icon;
+  const isDark = colorScheme === 'dark';
 
   return (
-    <ThemedView lightColor="#F0F2F5" darkColor="#1E2124" style={styles.card}>
+    <ThemedView
+      lightColor="#FFFFFF"
+      darkColor="#0B1654"
+      style={[
+        styles.card,
+        {
+          borderColor: isDark ? 'rgba(242,248,255,0.08)' : 'rgba(9,25,107,0.10)',
+        },
+      ]}
+    >
       <View style={styles.cardHeader}>
         {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={styles.thumbnail} contentFit="contain" />
+          <View style={[styles.thumbnailWrap, { backgroundColor: isDark ? '#04081E' : '#F2F8FF' }]}>
+            <Image source={{ uri: item.imageUrl }} style={styles.thumbnail} contentFit="contain" />
+          </View>
         ) : (
-          <ThemedView lightColor="#E8EAED" darkColor="#2A2D31" style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+          <ThemedView
+            lightColor="#E8F1F4"
+            darkColor="#04081E"
+            style={[styles.thumbnailWrap, styles.thumbnailPlaceholder]}
+          >
             <Ionicons name="nutrition-outline" size={32} color={iconColor} />
           </ThemedView>
         )}
@@ -109,14 +152,17 @@ function HistoryItemCard({
           <ThemedText style={styles.brand} numberOfLines={1}>
             {item.brand || 'Unknown Brand'}
           </ThemedText>
-          <ThemedText style={styles.timestamp}>{formatScannedAt(item.scannedAt, t)}</ThemedText>
-          <SensitivityAllergyStatus item={item} />
+          <View style={styles.timestampRow}>
+            <Ionicons name="time-outline" size={11} color={iconColor} />
+            <ThemedText style={styles.timestamp}>{formatScannedAt(item.scannedAt, t)}</ThemedText>
+          </View>
         </View>
         <TouchableOpacity onPress={onRemove} style={styles.removeButton} hitSlop={12}>
-          <Ionicons name="close-circle-outline" size={24} color={iconColor} />
+          <Ionicons name="close" size={18} color={iconColor} />
         </TouchableOpacity>
       </View>
-      <View style={styles.allergensSection}>
+      <SensitivityAllergyStatus item={item} />
+      <View style={[styles.allergensSection, { borderTopColor: isDark ? 'rgba(242,248,255,0.08)' : 'rgba(9,25,107,0.10)' }]}>
         <ThemedText style={styles.allergensLabel}>{t('history.allergens')}</ThemedText>
         <ThemedText style={styles.allergensText} numberOfLines={2}>
           {item.allergens}
@@ -130,7 +176,13 @@ export default function HistoryScreen() {
   const { items, clearHistory, removeItem } = useScanHistory();
   const { t } = useLanguage();
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const [, setRefresh] = useState(0);
+
+  const emptyIconBg = useThemeColor(
+    { light: 'rgba(156,214,189,0.22)', dark: 'rgba(156,214,189,0.18)' },
+    'background'
+  );
 
   // Force re-render when tab gains focus so we always show current language
   useFocusEffect(
@@ -163,40 +215,55 @@ export default function HistoryScreen() {
     <AppBackground>
       <SafeAreaView style={styles.container} edges={['top']}>
         <ThemedView lightColor="transparent" darkColor="transparent" style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="title" style={styles.title}>
-          {t('history.title')}
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>
-          {t('history.subtitle')}
-        </ThemedText>
-        {items.length > 0 && (
-          <TouchableOpacity onPress={handleClearHistory} style={styles.clearButton}>
-            <Ionicons name="trash-outline" size={18} color="#FF6B6B" />
-            <ThemedText style={styles.clearButtonText}>{t('history.clearHistory')}</ThemedText>
-          </TouchableOpacity>
-        )}
-      </View>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <View style={{ flex: 1 }}>
+                <ThemedText type="title" style={styles.title}>
+                  {t('history.title')}
+                </ThemedText>
+                <ThemedText style={styles.subtitle}>
+                  {t('history.subtitle')}
+                </ThemedText>
+              </View>
+              {items.length > 0 && (
+                <TouchableOpacity
+                  onPress={handleClearHistory}
+                  style={[
+                    styles.clearButton,
+                    {
+                      backgroundColor: isDark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.10)',
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="trash-outline" size={16} color={Palette.rose} />
+                  <ThemedText style={styles.clearButtonText}>{t('history.clearHistory')}</ThemedText>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
 
-      {items.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="barcode-outline" size={64} color={Colors[colorScheme ?? 'light'].icon} />
-          <ThemedText style={styles.emptyTitle}>{t('history.emptyTitle')}</ThemedText>
-          <ThemedText style={styles.emptySubtitle}>
-            {t('history.emptySubtitle')}
-          </ThemedText>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {items.map((item) => (
-            <HistoryItemCard key={item.id} item={item} onRemove={() => removeItem(item.id)} t={t} />
-          ))}
-        </ScrollView>
-      )}
+          {items.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIconWrap, { backgroundColor: emptyIconBg }]}>
+                <Ionicons name="barcode-outline" size={48} color={Palette.navy} />
+              </View>
+              <ThemedText style={styles.emptyTitle}>{t('history.emptyTitle')}</ThemedText>
+              <ThemedText style={styles.emptySubtitle}>
+                {t('history.emptySubtitle')}
+              </ThemedText>
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.list}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {items.map((item) => (
+                <HistoryItemCard key={item.id} item={item} onRemove={() => removeItem(item.id)} t={t} />
+              ))}
+            </ScrollView>
+          )}
         </ThemedView>
       </SafeAreaView>
     </AppBackground>
@@ -205,77 +272,101 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 20 },
+  header: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 16 },
+  headerTop: { flexDirection: 'row', alignItems: 'flex-start' },
   title: {
     fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 28,
-    lineHeight: 36,
-    marginBottom: 8,
+    fontSize: 30,
+    lineHeight: 38,
+    marginBottom: 6,
   },
   subtitle: {
     fontFamily: 'OpenDyslexic',
     fontSize: 14,
     lineHeight: 22,
-    opacity: 0.8,
-    marginBottom: 16,
+    opacity: 0.75,
   },
   clearButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginLeft: 12,
+    marginTop: 4,
   },
   clearButtonText: {
-    fontFamily: 'OpenDyslexic',
-    fontSize: 14,
-    color: '#FF6B6B',
-    marginLeft: 8,
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 12,
+    color: Palette.rose,
+    marginLeft: 6,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
+    paddingBottom: 80,
+  },
+  emptyIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
   },
   emptyTitle: {
     fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 20,
-    lineHeight: 28,
-    marginTop: 20,
+    fontSize: 22,
+    lineHeight: 30,
     marginBottom: 10,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontFamily: 'OpenDyslexic',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 23,
     textAlign: 'center',
-    opacity: 0.75,
+    opacity: 0.72,
   },
   list: { flex: 1 },
-  listContent: { paddingHorizontal: 24, paddingBottom: 40 },
+  listContent: { paddingHorizontal: 22, paddingBottom: 120, paddingTop: 4 },
   card: {
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 18,
     marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.05,
+        shadowRadius: 16,
+      },
+      android: { elevation: 3 },
+    }),
   },
-  cardHeader: { flexDirection: 'row', marginBottom: 14 },
-  thumbnail: {
-    width: 68,
-    height: 68,
+  cardHeader: { flexDirection: 'row', marginBottom: 12 },
+  thumbnailWrap: {
+    width: 64,
+    height: 64,
     borderRadius: 16,
     overflow: 'hidden',
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
   },
   thumbnailPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 0,
   },
-  cardContent: { flex: 1, marginLeft: 16, justifyContent: 'center', minWidth: 0 },
+  cardContent: { flex: 1, marginLeft: 14, justifyContent: 'center', minWidth: 0 },
   productName: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 16,
@@ -285,47 +376,62 @@ const styles = StyleSheet.create({
   brand: {
     fontFamily: 'OpenDyslexic',
     fontSize: 13,
-    opacity: 0.75,
+    opacity: 0.7,
     marginBottom: 6,
+  },
+  timestampRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   timestamp: {
     fontFamily: 'OpenDyslexic',
-    fontSize: 12,
-    opacity: 0.65,
-    marginBottom: 8,
+    fontSize: 11,
+    opacity: 0.6,
   },
-  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 12,
+    borderRadius: 999,
+    gap: 5,
   },
   statusPlaceholderText: {
-    fontFamily: 'OpenDyslexic',
+    fontFamily: 'OpenDyslexic-Bold',
     fontSize: 11,
-    opacity: 0.85,
-    marginLeft: 6,
   },
-  removeButton: { padding: 6 },
+  removeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(128,128,128,0.10)',
+  },
   allergensSection: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(128,128,128,0.2)',
-    paddingTop: 14,
-    marginTop: 2,
+    paddingTop: 12,
   },
   allergensLabel: {
     fontFamily: 'OpenDyslexic-Bold',
-    fontSize: 12,
-    lineHeight: 18,
-    opacity: 0.85,
+    fontSize: 11,
+    lineHeight: 16,
+    opacity: 0.7,
     marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   allergensText: {
     fontFamily: 'OpenDyslexic',
     fontSize: 14,
     lineHeight: 22,
-    opacity: 0.9,
+    opacity: 0.92,
   },
 });
