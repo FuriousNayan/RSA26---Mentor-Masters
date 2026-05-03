@@ -78,7 +78,7 @@ async function searchViaSearchALicious(
 ): Promise<DiscoverProduct[]> {
   const params = new URLSearchParams({
     q: searchTerm.trim() || 'food',
-    page_size: String(Math.min(limit, 24)),
+    page_size: String(Math.min(limit, 48)),
     page: '1',
   });
   const url = `https://search.openfoodfacts.org/search?${params.toString()}`;
@@ -101,7 +101,7 @@ async function searchViaCgiSearch(
     search_simple: '1',
     action: 'process',
     json: '1',
-    page_size: String(Math.min(limit, 24)),
+    page_size: String(Math.min(limit, 48)),
   });
   const url = `https://world.openfoodfacts.org/cgi/search.pl?${params.toString()}`;
   const res = await fetch(url);
@@ -126,11 +126,11 @@ export async function searchSimilarProducts(
   const broadTerm = words.slice(0, 3).join(' ') || 'food';
 
   try {
-    const results = await searchViaSearchALicious(broadTerm, limit + 10);
+    const results = await searchViaSearchALicious(broadTerm, limit);
     if (results.length > 0) return results;
   } catch {
     // fallback to legacy API
   }
 
-  return searchViaCgiSearch(broadTerm, limit + 10);
+  return searchViaCgiSearch(broadTerm, limit);
 }

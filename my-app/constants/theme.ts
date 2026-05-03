@@ -49,11 +49,11 @@ export const Palette = {
   emerald: '#9CD6BD',
   emeraldSoft: '#E5F4ED',
 
-  // Semantic safety colors (intentionally retained).
+  // Semantic safety colors (chips / warnings — soft tints; see AllergySensitivityUI for pickers).
   amber: '#F59E0B',
-  amberSoft: '#FEF3C7',
+  amberSoft: '#FEF9C3',
   rose: '#EF4444',
-  roseSoft: '#FEE2E2',
+  roseSoft: '#FFE4E6',
 
   // Neutral slate scale tuned to read well over ice/navy backgrounds.
   slate50: '#F2F8FF',
@@ -90,6 +90,67 @@ export const Colors = {
     tabIconSelected: tintColorDark,
   },
 };
+
+/**
+ * Lighter pastel allergy & sensitivity chips (preferences, pickers, related badges).
+ */
+export const AllergySensitivityUI = {
+  light: {
+    allergy: {
+      chipBg: 'rgba(254, 205, 211, 0.52)',
+      chipBorder: 'rgba(252, 165, 165, 0.45)',
+      chipText: '#E11D48',
+      chipIcon: '#F43F5E',
+      accent: '#FB7185',
+      accentSoft: 'rgba(251, 113, 133, 0.2)',
+      accentButton: '#F43F5E',
+      calloutIconBg: 'rgba(254, 202, 202, 0.55)',
+      calloutText: '#E11D48',
+    },
+    sensitivity: {
+      chipBg: 'rgba(254, 249, 195, 0.72)',
+      chipBorder: 'rgba(250, 204, 21, 0.4)',
+      chipText: '#A16207',
+      chipIcon: '#EAB308',
+      accent: '#FACC15',
+      accentSoft: 'rgba(250, 204, 21, 0.25)',
+      accentButton: '#F59E0B',
+      calloutIconBg: 'rgba(254, 249, 195, 0.85)',
+      calloutText: '#A16207',
+    },
+  },
+  dark: {
+    allergy: {
+      chipBg: 'rgba(251, 113, 133, 0.22)',
+      chipBorder: 'rgba(253, 164, 175, 0.35)',
+      chipText: '#FDA4AF',
+      chipIcon: '#FB7185',
+      accent: '#FB7185',
+      accentSoft: 'rgba(251, 113, 133, 0.18)',
+      accentButton: '#F43F5E',
+      calloutIconBg: 'rgba(251, 113, 133, 0.22)',
+      calloutText: '#FDA4AF',
+    },
+    sensitivity: {
+      chipBg: 'rgba(245, 158, 11, 0.2)',
+      chipBorder: 'rgba(251, 191, 36, 0.38)',
+      chipText: '#FCD34D',
+      chipIcon: '#FBBF24',
+      accent: '#FBBF24',
+      accentSoft: 'rgba(245, 158, 11, 0.2)',
+      accentButton: '#F59E0B',
+      calloutIconBg: 'rgba(245, 158, 11, 0.22)',
+      calloutText: '#FCD34D',
+    },
+  },
+} as const;
+
+export function getAllergySensitivityBranch(
+  scheme: 'light' | 'dark',
+  branch: 'allergy' | 'sensitivity'
+) {
+  return scheme === 'dark' ? AllergySensitivityUI.dark[branch] : AllergySensitivityUI.light[branch];
+}
 
 export const Fonts = Platform.select({
   ios: {

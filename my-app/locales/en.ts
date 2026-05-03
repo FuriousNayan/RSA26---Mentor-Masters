@@ -45,6 +45,7 @@ export default {
     noHistoryYet: 'No history yet',
     noHistorySubtitle: 'Scan some items on the Home tab to get personalized recommendations here.',
     saferAlternatives: 'Safer alternatives for you:',
+    moreAlternatives: 'More recommendations',
     noAlternatives: 'No alternatives without your allergens found. Try searching for a similar product by category (e.g. "dark chocolate" instead of the full name).',
     allInHistory: 'All your scanned items are in your history. Add preferences to see personalized filtering.',
   },
@@ -82,6 +83,21 @@ export default {
     sensitivitiesHint: 'Items you prefer to avoid or that cause discomfort.',
     addAllergyPlaceholder: 'Add custom allergy...',
     addSensitivityPlaceholder: 'Add custom sensitivity...',
+    introBody:
+      'Tell us what to watch out for so we can keep your scans safe and personal.',
+    infoAccessibilityLabel: 'Learn the difference between allergies and sensitivities',
+    infoTitle: 'Allergies vs food sensitivities',
+    infoIntro:
+      'You can tap chips to add items to either list. Here is how they differ at a glance.',
+    infoAllergiesHeading: 'Allergies',
+    infoAllergiesBody:
+      'An allergy involves the immune system reacting to proteins in food. Even a small amount can trigger a serious reaction (for example hives, swelling, or trouble breathing). Use this list for what your doctor has told you to avoid entirely, and always rely on product labels and medical advice. NutriNav only helps surface information—it is not a medical device.',
+    infoSensitivitiesHeading: 'Food sensitivities',
+    infoSensitivitiesBody:
+      'A food sensitivity or intolerance usually means your body struggles to digest or tolerate something. Symptoms are often milder or delayed (such as bloating, headache, or discomfort). Use these chips for foods you want to limit or be warned about—even if they are not a diagnosed allergy.',
+    infoDisclaimer:
+      'NutriNav does not diagnose allergies or intolerances. If you are unsure, ask a healthcare professional.',
+    infoClose: 'Got it',
   },
   settings: {
     title: 'Settings',

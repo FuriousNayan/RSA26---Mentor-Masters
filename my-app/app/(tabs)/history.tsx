@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Palette } from '@/constants/theme';
+import { Colors, Palette, getAllergySensitivityBranch } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useScanHistory, type ScannedItem } from '@/contexts/scan-history-context';
@@ -58,25 +58,31 @@ function SensitivityAllergyStatus({ item }: { item: ScannedItem }) {
       : t('history.allergyClear')
     : t('history.allergyNotConfigured');
 
-  const safeBg = isDark ? 'rgba(16,185,129,0.18)' : 'rgba(16,185,129,0.12)';
-  const safeText = isDark ? '#6EE7B7' : '#047857';
-  const warnBg = isDark ? 'rgba(239,68,68,0.22)' : 'rgba(239,68,68,0.12)';
-  const warnText = isDark ? '#FCA5A5' : '#B91C1C';
+  const scheme = isDark ? 'dark' : 'light';
+  const allergyTok = getAllergySensitivityBranch(scheme, 'allergy');
+  const sensTok = getAllergySensitivityBranch(scheme, 'sensitivity');
+
+  const safeBg = isDark ? 'rgba(156,214,189,0.22)' : 'rgba(156,214,189,0.38)';
+  const safeText = isDark ? '#B8E2CD' : '#0F766E';
+  const sensitivityWarnBg = sensTok.chipBg;
+  const sensitivityWarnFg = sensTok.chipText;
+  const allergyWarnBg = allergyTok.chipBg;
+  const allergyWarnFg = allergyTok.chipText;
   const neutralBg = isDark ? 'rgba(242,248,255,0.08)' : 'rgba(9,25,107,0.06)';
   const neutralText = isDark ? '#A8B3D8' : '#3B4682';
 
   const sensitivityBg = !sensitivityConfigured
     ? neutralBg
     : hasSensitivityConflict
-    ? warnBg
+    ? sensitivityWarnBg
     : safeBg;
   const sensitivityFg = !sensitivityConfigured
     ? neutralText
     : hasSensitivityConflict
-    ? warnText
+    ? sensitivityWarnFg
     : safeText;
-  const allergyBg = !allergyConfigured ? neutralBg : hasAllergyConflict ? warnBg : safeBg;
-  const allergyFg = !allergyConfigured ? neutralText : hasAllergyConflict ? warnText : safeText;
+  const allergyBg = !allergyConfigured ? neutralBg : hasAllergyConflict ? allergyWarnBg : safeBg;
+  const allergyFg = !allergyConfigured ? neutralText : hasAllergyConflict ? allergyWarnFg : safeText;
 
   const sensitivityIcon = !sensitivityConfigured
     ? 'help-circle-outline'
@@ -211,33 +217,43 @@ export default function HistoryScreen() {
     return null;
   }
 
+  const histAllergy = getAllergySensitivityBranch(isDark ? 'dark' : 'light', 'allergy');
+
   return (
     <AppBackground>
       <SafeAreaView style={styles.container} edges={['top']}>
         <ThemedView lightColor="transparent" darkColor="transparent" style={styles.container}>
           <View style={styles.header}>
-            <View style={styles.headerTop}>
-              <View style={{ flex: 1 }}>
-                <ThemedText type="title" style={styles.title}>
-                  {t('history.title')}
-                </ThemedText>
-                <ThemedText style={styles.subtitle}>
-                  {t('history.subtitle')}
-                </ThemedText>
-              </View>
+            <ThemedText
+              type="title"
+              style={styles.title}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.78}
+            >
+              {t('history.title')}
+            </ThemedText>
+            <View style={styles.subtitleRow}>
+              <ThemedText style={[styles.subtitle, styles.subtitleFlex]}>
+                {t('history.subtitle')}
+              </ThemedText>
               {items.length > 0 && (
                 <TouchableOpacity
                   onPress={handleClearHistory}
                   style={[
                     styles.clearButton,
                     {
-                      backgroundColor: isDark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.10)',
+                      backgroundColor: histAllergy.chipBg,
+                      borderWidth: 1,
+                      borderColor: histAllergy.chipBorder,
                     },
                   ]}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="trash-outline" size={16} color={Palette.rose} />
-                  <ThemedText style={styles.clearButtonText}>{t('history.clearHistory')}</ThemedText>
+                  <Ionicons name="trash-outline" size={16} color={histAllergy.chipIcon} />
+                  <ThemedText style={[styles.clearButtonText, { color: histAllergy.chipText }]}>
+                    {t('history.clearHistory')}
+                  </ThemedText>
                 </TouchableOpacity>
               )}
             </View>
@@ -273,12 +289,16 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 16 },
-  headerTop: { flexDirection: 'row', alignItems: 'flex-start' },
   title: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 30,
     lineHeight: 38,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   subtitle: {
     fontFamily: 'OpenDyslexic',
@@ -286,19 +306,21 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     opacity: 0.75,
   },
+  subtitleFlex: {
+    flex: 1,
+    minWidth: 0,
+  },
   clearButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 14,
-    marginLeft: 12,
-    marginTop: 4,
   },
   clearButtonText: {
     fontFamily: 'OpenDyslexic-Bold',
     fontSize: 12,
-    color: Palette.rose,
     marginLeft: 6,
   },
   emptyState: {

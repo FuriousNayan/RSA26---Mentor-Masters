@@ -45,6 +45,7 @@ export default {
     noHistoryYet: 'Pas encore d\'historique',
     noHistorySubtitle: 'Scannez des articles dans l\'onglet Accueil pour obtenir des recommandations personnalisées ici.',
     saferAlternatives: 'Alternatives plus sûres pour vous :',
+    moreAlternatives: 'Plus de recommandations',
     noAlternatives: 'Aucune alternative sans vos allergènes trouvée. Essayez de rechercher un produit similaire par catégorie.',
     allInHistory: 'Tous vos articles scannés sont dans votre historique. Ajoutez des préférences pour voir le filtrage personnalisé.',
   },
@@ -82,6 +83,21 @@ export default {
     sensitivitiesHint: 'Articles que vous préférez éviter ou qui vous causent des inconforts.',
     addAllergyPlaceholder: 'Ajouter une allergie personnalisée...',
     addSensitivityPlaceholder: 'Ajouter une sensibilité personnalisée...',
+    introBody:
+      'Indiquez ce à quoi nous devons être attentifs pour des analyses adaptées et en toute sécurité.',
+    infoAccessibilityLabel: 'Comprendre la différence entre allergies et sensibilités',
+    infoTitle: 'Allergies et sensibilités alimentaires',
+    infoIntro:
+      'Vous pouvez toucher les pastilles pour ajouter des éléments à chaque liste. Voici la différence en résumé.',
+    infoAllergiesHeading: 'Allergies',
+    infoAllergiesBody:
+      'Une allergie implique une réaction du système immunitaire aux protéines d\'un aliment. Même une petite quantité peut provoquer une réaction grave (par exemple urticaire, gonflement ou difficultés respiratoires). Utilisez cette liste pour ce que votre médecin vous a dit d\'éviter totalement, et fiez-vous toujours à l\'étiquette du produit et aux conseils médicaux. NutriNav ne fait qu\'afficher des informations ; ce n\'est pas un dispositif médical.',
+    infoSensitivitiesHeading: 'Sensibilités alimentaires',
+    infoSensitivitiesBody:
+      'Une sensibilité ou intolérance signifie souvent que votre corps a plus de mal à digérer ou tolérer quelque chose. Les symptômes sont souvent plus légers ou retardés (par exemple ballonnements, maux de tête ou inconfort). Utilisez ces pastilles pour les aliments que vous voulez limiter ou pour lesquels vous voulez des alertes—même s\'il ne s\'agit pas d\'une allergie diagnostiquée.',
+    infoDisclaimer:
+      'NutriNav ne diagnostique pas les allergies ni les intolérances. En cas de doute, consultez un professionnel de santé.',
+    infoClose: 'Compris',
   },
   settings: {
     title: 'Paramètres',

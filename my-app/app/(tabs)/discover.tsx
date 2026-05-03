@@ -18,7 +18,7 @@ import { router } from 'expo-router';
 import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Palette } from '@/constants/theme';
+import { Colors, Palette, getAllergySensitivityBranch } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useScanHistory, type ScannedItem } from '@/contexts/scan-history-context';
@@ -29,6 +29,97 @@ import {
 } from '@/contexts/user-preferences-context';
 import { useLanguage } from '@/contexts/language-context';
 import { searchSimilarProducts, type DiscoverProduct } from '@/services/discover-api';
+
+function normalizeBarcode(code: string): string {
+  const digits = String(code || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.padStart(13, '0');
+}
+
+function normalizeNameKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function collectHistoryExclusions(scanItems: ScannedItem[], sourceItem: ScannedItem) {
+  const codes = new Set<string>();
+  const nameKeys = new Set<string>();
+  for (const it of scanItems) {
+    const bc = normalizeBarcode(it.barcode);
+    if (bc) codes.add(bc);
+    const nk = normalizeNameKey(it.productName || '');
+    if (nk.length > 2) nameKeys.add(nk);
+  }
+  const sb = normalizeBarcode(sourceItem.barcode);
+  if (sb) codes.add(sb);
+  const snk = normalizeNameKey(sourceItem.productName || '');
+  if (snk.length > 2) nameKeys.add(snk);
+  return { codes, nameKeys };
+}
+
+function isAlternativeExcluded(
+  p: DiscoverProduct,
+  exclusions: { codes: Set<string>; nameKeys: Set<string> },
+  sourceItem: ScannedItem
+): boolean {
+  const pc = normalizeBarcode(p.code);
+  if (pc && exclusions.codes.has(pc)) return true;
+  const pnk = normalizeNameKey(p.productName || '');
+  if (pnk.length > 2 && exclusions.nameKeys.has(pnk)) return true;
+  const srcNk = normalizeNameKey(sourceItem.productName || '');
+  if (srcNk.length > 2 && pnk === srcNk) return true;
+  return false;
+}
+
+function dedupeByCode(products: DiscoverProduct[]): DiscoverProduct[] {
+  const seen = new Set<string>();
+  const out: DiscoverProduct[] = [];
+  for (const p of products) {
+    const c = normalizeBarcode(p.code);
+    if (!c || seen.has(c)) continue;
+    seen.add(c);
+    out.push(p);
+  }
+  return out;
+}
+
+async function fetchAlternativesPool(
+  item: ScannedItem,
+  scanItems: ScannedItem[],
+  preferences: UserPreferences
+): Promise<DiscoverProduct[]> {
+  const exclusions = collectHistoryExclusions(scanItems, item);
+  const primary = item.productName || item.brand || 'food';
+  let results = await searchSimilarProducts(primary, 48);
+  const brand = (item.brand || '').trim();
+  if (brand.length > 0) {
+    const extra = await searchSimilarProducts(brand, 48);
+    results = dedupeByCode([...results, ...extra]);
+  }
+  results = dedupeByCode(results);
+
+  const safe: DiscoverProduct[] = [];
+  const seenSafe = new Set<string>();
+
+  for (const p of results) {
+    if (isAlternativeExcluded(p, exclusions, item)) continue;
+    const c = normalizeBarcode(p.code);
+    if (!c || seenSafe.has(c)) continue;
+    const { hasAllergyConflict, hasSensitivityConflict } = productMatchesUserRestrictions(
+      p.allergens,
+      preferences.allergies,
+      preferences.sensitivities
+    );
+    if (hasAllergyConflict || hasSensitivityConflict) continue;
+    seenSafe.add(c);
+    safe.push(p);
+  }
+
+  return safe;
+}
 
 type RecommendationSection = {
   title: string;
@@ -102,13 +193,15 @@ function ProductCard({
   const isDark = colorScheme === 'dark';
   const iconColor = Colors[colorScheme ?? 'light'].icon;
 
+  const sensTok = getAllergySensitivityBranch(isDark ? 'dark' : 'light', 'sensitivity');
+
   const accentColor = variant === 'safe'
     ? (isDark ? Palette.mint : Palette.navy)
-    : Palette.amber;
-  const accentStripe = variant === 'safe' ? Palette.mint : Palette.amber;
+    : sensTok.chipText;
+  const accentStripe = variant === 'safe' ? Palette.mint : sensTok.accent;
   const accentTintBg = variant === 'safe'
     ? (isDark ? 'rgba(156,214,189,0.22)' : 'rgba(156,214,189,0.32)')
-    : (isDark ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.12)');
+    : sensTok.chipBg;
 
   return (
     <ThemedView
@@ -238,12 +331,14 @@ export default function DiscoverScreen() {
   const preferences = useUserPreferences();
   const [refreshing, setRefreshing] = useState(false);
   const [loadingAlternativesFor, setLoadingAlternativesFor] = useState<string | null>(null);
-  const alternativesCacheRef = useRef<Record<string, DiscoverProduct[]>>({});
-
+  const alternativesPoolRef = useRef<Record<string, DiscoverProduct[]>>({});
+  const [alternativesData, setAlternativesData] = useState<Record<string, DiscoverProduct[]>>({});
+  const [alternativesPoolTotal, setAlternativesPoolTotal] = useState<Record<string, number>>({});
   const { t } = useLanguage();
   const { safeForYou, notSafeForYou } = useRecommendations(items, preferences);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const sensUi = getAllergySensitivityBranch(isDark ? 'dark' : 'light', 'sensitivity');
 
   const emptyIconBg = useThemeColor(
     { light: 'rgba(156,214,189,0.30)', dark: 'rgba(156,214,189,0.18)' },
@@ -255,45 +350,28 @@ export default function DiscoverScreen() {
     'OpenDyslexic-Bold': require('@/assets/images/fonts/OpenDyslexic-Bold.otf'),
   });
 
-  const fetchAlternatives = useCallback(async (item: ScannedItem) => {
-    const prefKey = [...preferences.allergies, ...preferences.sensitivities].sort().join('|');
-    const key = `${item.id}:${prefKey}`;
-    const cached = alternativesCacheRef.current[key];
-    if (cached) return cached;
-    setLoadingAlternativesFor(item.id);
-    try {
-      const searchTerm = item.productName || item.brand || 'food';
-      const results = await searchSimilarProducts(searchTerm, 12);
-      const filtered = results.filter(
-        (p) =>
-          p.code !== item.barcode &&
-          p.productName.toLowerCase() !== (item.productName || '').toLowerCase()
-      );
-      const safeAlternatives = filtered.filter((p) => {
-        const { hasAllergyConflict: ac, hasSensitivityConflict: sc } = productMatchesUserRestrictions(
-          p.allergens,
-          preferences.allergies,
-          preferences.sensitivities
-        );
-        return !ac && !sc;
-      });
-      const toShow = (safeAlternatives.length > 0 ? safeAlternatives : filtered.slice(0, 6)).slice(0, 3);
-      alternativesCacheRef.current[key] = toShow;
-      return toShow;
-    } catch (err) {
-      console.warn('Find alternatives failed:', err);
-      return [];
-    } finally {
-      setLoadingAlternativesFor(null);
-    }
-  }, [preferences]);
+  useEffect(() => {
+    alternativesPoolRef.current = {};
+    setAlternativesData({});
+    setAlternativesPoolTotal({});
+  }, [preferences.allergies, preferences.sensitivities]);
 
   const [expandedAlternatives, setExpandedAlternatives] = useState<string | null>(null);
-  const [alternativesData, setAlternativesData] = useState<Record<string, DiscoverProduct[]>>({});
 
-  useEffect(() => {
-    alternativesCacheRef.current = {};
-  }, [preferences.allergies, preferences.sensitivities]);
+  const handleLoadMoreAlternatives = useCallback(
+    (item: ScannedItem) => {
+      const prefKey = [...preferences.allergies, ...preferences.sensitivities].sort().join('|');
+      const poolKey = `${item.id}:${prefKey}`;
+      const pool = alternativesPoolRef.current[poolKey];
+      if (!pool?.length) return;
+      setAlternativesData((prev) => {
+        const shown = prev[item.id] ?? [];
+        const nextLen = Math.min(shown.length + 3, pool.length);
+        return { ...prev, [item.id]: pool.slice(0, nextLen) };
+      });
+    },
+    [preferences.allergies, preferences.sensitivities]
+  );
 
   const handleFindAlternatives = useCallback(
     async (item: ScannedItem) => {
@@ -302,10 +380,24 @@ export default function DiscoverScreen() {
         return;
       }
       setExpandedAlternatives(item.id);
-      const alts = await fetchAlternatives(item);
-      setAlternativesData((prev) => ({ ...prev, [item.id]: alts }));
+      const prefKey = [...preferences.allergies, ...preferences.sensitivities].sort().join('|');
+      const poolKey = `${item.id}:${prefKey}`;
+      const existingPool = alternativesPoolRef.current[poolKey];
+      setLoadingAlternativesFor(item.id);
+      try {
+        const pool = existingPool ?? (await fetchAlternativesPool(item, items, preferences));
+        alternativesPoolRef.current[poolKey] = pool;
+        setAlternativesPoolTotal((prev) => ({ ...prev, [item.id]: pool.length }));
+        setAlternativesData((prev) => ({ ...prev, [item.id]: pool.slice(0, 3) }));
+      } catch (err) {
+        console.warn('Find alternatives failed:', err);
+        setAlternativesData((prev) => ({ ...prev, [item.id]: [] }));
+        setAlternativesPoolTotal((prev) => ({ ...prev, [item.id]: 0 }));
+      } finally {
+        setLoadingAlternativesFor(null);
+      }
     },
-    [expandedAlternatives, fetchAlternatives]
+    [expandedAlternatives, preferences, items]
   );
 
   const onRefresh = useCallback(async () => {
@@ -353,15 +445,15 @@ export default function DiscoverScreen() {
           >
             {!preferences.hasPreferences && (
               <ThemedView
-                lightColor="#FFFBEB"
-                darkColor="#3B2E0A"
+                lightColor={sensUi.chipBg}
+                darkColor="rgba(245, 158, 11, 0.14)"
                 style={[
                   styles.banner,
-                  { borderColor: isDark ? 'rgba(245,158,11,0.30)' : 'rgba(245,158,11,0.35)' },
+                  { borderColor: sensUi.chipBorder },
                 ]}
               >
-                <View style={[styles.bannerIconWrap, { backgroundColor: 'rgba(245,158,11,0.18)' }]}>
-                  <Ionicons name="information-circle" size={22} color={Palette.amber} />
+                <View style={[styles.bannerIconWrap, { backgroundColor: sensUi.accentSoft }]}>
+                  <Ionicons name="information-circle" size={22} color={sensUi.chipIcon} />
                 </View>
                 <ThemedText style={styles.bannerText}>
                   {t('discover.addPreferencesBanner')}
@@ -405,11 +497,11 @@ export default function DiscoverScreen() {
                 {notSafeForYou.items.length > 0 && (
                   <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                      <View style={[styles.sectionIcon, { backgroundColor: 'rgba(245,158,11,0.18)' }]}>
-                        <Ionicons name="warning" size={18} color={Palette.amber} />
+                      <View style={[styles.sectionIcon, { backgroundColor: sensUi.chipBg }]}>
+                        <Ionicons name="warning" size={18} color={sensUi.chipIcon} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <ThemedText type="subtitle" style={[styles.sectionTitle, styles.warningTitle]}>
+                        <ThemedText type="subtitle" style={[styles.sectionTitle, { color: sensUi.chipText }]}>
                           {notSafeForYou.title}
                         </ThemedText>
                         {notSafeForYou.subtitle && (
@@ -454,6 +546,27 @@ export default function DiscoverScreen() {
                                     {t('discover.noAlternatives')}
                                   </ThemedText>
                                 )}
+                                {(alternativesData[item.id] ?? []).length > 0 &&
+                                  (alternativesData[item.id] ?? []).length <
+                                    (alternativesPoolTotal[item.id] ?? 0) && (
+                                    <TouchableOpacity
+                                      style={[
+                                        styles.moreAlternativesBtn,
+                                        {
+                                          backgroundColor: isDark
+                                            ? 'rgba(156,214,189,0.18)'
+                                            : 'rgba(9,25,107,0.08)',
+                                        },
+                                      ]}
+                                      onPress={() => handleLoadMoreAlternatives(item)}
+                                      activeOpacity={0.85}
+                                    >
+                                      <Ionicons name="add-circle-outline" size={18} color={Palette.navy} />
+                                      <ThemedText style={styles.moreAlternativesText}>
+                                        {t('discover.moreAlternatives')}
+                                      </ThemedText>
+                                    </TouchableOpacity>
+                                  )}
                               </>
                             )}
                           </View>
@@ -551,7 +664,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 2,
   },
-  warningTitle: { color: Palette.amber },
   sectionSubtitle: {
     fontFamily: 'OpenDyslexic',
     fontSize: 12,
@@ -702,6 +814,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     opacity: 0.72,
     marginBottom: 8,
+  },
+  moreAlternativesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 6,
+    marginBottom: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    alignSelf: 'stretch',
+  },
+  moreAlternativesText: {
+    fontFamily: 'OpenDyslexic-Bold',
+    fontSize: 13,
+    color: Palette.navy,
   },
   emptyState: {
     flex: 1,

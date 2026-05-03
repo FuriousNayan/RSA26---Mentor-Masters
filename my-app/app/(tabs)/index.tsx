@@ -19,18 +19,22 @@ import { AppBackground } from '@/components/app-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useScanHistory } from '@/contexts/scan-history-context';
 import { useLanguage } from '@/contexts/language-context';
 import {
   BrandGradient,
   BrandGradientSecondary,
   Palette,
+  getAllergySensitivityBranch,
 } from '@/constants/theme';
 
 export default function HomeScreen() {
   const { addItem } = useScanHistory();
   const { t } = useLanguage();
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const allergenUI = getAllergySensitivityBranch(colorScheme === 'dark' ? 'dark' : 'light', 'allergy');
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [scanned, setScanned] = useState(false);
@@ -279,12 +283,12 @@ export default function HomeScreen() {
 
             <View style={[styles.dataCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
               <View style={styles.dataCardHeader}>
-                <View style={[styles.dataCardIcon, { backgroundColor: `${Palette.rose}1F` }]}>
-                  <Ionicons name="alert-circle" size={20} color={Palette.rose} />
+                <View style={[styles.dataCardIcon, { backgroundColor: allergenUI.calloutIconBg }]}>
+                  <Ionicons name="alert-circle" size={20} color={allergenUI.chipIcon} />
                 </View>
                 <ThemedText
                   type="subtitle"
-                  style={[styles.sectionTitle, { color: Palette.rose }]}
+                  style={[styles.sectionTitle, { color: allergenUI.calloutText }]}
                 >
                   {t('home.containsAllergens')}
                 </ThemedText>

@@ -45,6 +45,7 @@ export default {
     noHistoryYet: 'Aún no hay historial',
     noHistorySubtitle: 'Escanea algunos artículos en la pestaña Inicio para obtener recomendaciones personalizadas aquí.',
     saferAlternatives: 'Alternativas más seguras para ti:',
+    moreAlternatives: 'Más recomendaciones',
     noAlternatives: 'No se encontraron alternativas sin tus alérgenos. Intenta buscar un producto similar por categoría.',
     allInHistory: 'Todos tus artículos escaneados están en tu historial. Añade preferencias para ver el filtrado personalizado.',
   },
@@ -82,6 +83,21 @@ export default {
     sensitivitiesHint: 'Artículos que prefieres evitar o que te causan molestias.',
     addAllergyPlaceholder: 'Añadir alergia personalizada...',
     addSensitivityPlaceholder: 'Añadir sensibilidad personalizada...',
+    introBody:
+      'Dinos qué debemos tener en cuenta para que tus escaneos sean seguros y personalizados.',
+    infoAccessibilityLabel: 'Información sobre la diferencia entre alergias y sensibilidades',
+    infoTitle: 'Alergias vs sensibilidades alimentarias',
+    infoIntro:
+      'Puedes tocar las etiquetas para añadir elementos a cada lista. Así es como se diferencian.',
+    infoAllergiesHeading: 'Alergias',
+    infoAllergiesBody:
+      'Una alergia implica que el sistema inmunitario reacciona a proteínas de alimentos. Incluso una cantidad pequeña puede provocar una reacción grave (por ejemplo urticaria, hinchazón o dificultad para respirar). Usa esta lista para lo que tu médico te ha dicho que evites por completo, y confía siempre en el etiquetado del producto y el consejo médico. NutriNav solo muestra información; no es un dispositivo médico.',
+    infoSensitivitiesHeading: 'Sensibilidades alimentarias',
+    infoSensitivitiesBody:
+      'Una sensibilidad o intolerancia suele significar que tu organismo digesta o tolera peor algo. Los síntomas suelen ser más leves o tardíos (por ejemplo hinchazón, dolor de cabeza o molestias). Usa estas etiquetas para alimentos que quieras limitar o sobre los que quieras recibir avisos—aunque no sean una alergia diagnosticada.',
+    infoDisclaimer:
+      'NutriNav no diagnostica alergias ni intolerancias. Si tienes dudas, consulta a un profesional de salud.',
+    infoClose: 'Entendido',
   },
   settings: {
     title: 'Ajustes',
